@@ -919,7 +919,7 @@ function drawHUD(){const cw=Math.min(240,(W-36)/2),ch=74,y=H-ch-12;ctx.textBasel
  if(muted){ctx.textAlign='right';ctx.font='12px system-ui';ctx.fillStyle='rgba(255,255,255,.5)';ctx.fillText('🔇',W-14,18);}}
 
 /* ================= 온라인 1:1 (아티팩트 room) =================
- 방 코드 → room.join('brawl-'+코드). 각자 자기 캐릭터만 직접 움직이고, presence로 상태를 보낸다(1초 약 30번).
+ 방 코드 → 기본 방(lobby)에서 presence의 rm이 같은 사람끼리 짝짓기(codeRoom). 각자 자기 캐릭터만 직접 움직이고, presence로 상태를 보낸다(1초 약 30번).
  때린 쪽이 맞았는지 판정해 presence의 hits 목록에 번호를 붙여 싣고, 맞는 쪽이 새 번호를 보면
  자기 실제 상태로 막기·저스트 회피·가드를 판정해 넉백을 적용한다. 목숨은 각자 상대가 보낸 값이 줄면 장외 연출·점수 처리. */
 let ROOM=null,ROOM_ST='wait'; // wait → ok / none
@@ -988,9 +988,17 @@ function startOnline(opp){const g=opp.presence;NET.on=true;NET.msg='';NET.side=m
  const ol=lookOf(g);if(ol.col===LOOK.col)ol.col=COLS.find(c=>c!==LOOK.col&&c!=='#868e96'); // 같은 색이면 내 화면에서만 바꿔 구분
  MATCH={bo:3,w:[0,0],round:1,need:2,over:false,st:[newSt(),newSt()],looks:[LOOK,ol],wps:[CFG.wp,wpOf(g)],bots:[false,false]};
  matchT=0;audio();startRound();}
+// 방 코드별 공간: 이름 붙은 방(join)은 같은 계정의 두 창이 서로 안 보이는 경우가 있어,
+// 게임을 연 모두가 있는 기본 방(lobby)에서 presence의 rm(방 코드)이 같은 사람끼리만 짝짓는다
+const NET_KEYS=['pl','nm','col','hat','eye','wlv','wp','rdy','gen','rd','g','hits','rm'];
+function codeRoom(code){const mine=p=>p.sameTab||(p.presence&&p.presence.rm===code);
+ return{name:code,peers:()=>ROOM.peers().filter(mine),connected:()=>ROOM.connected(),
+  presence:o=>ROOM.presence(Object.assign({},o,{rm:code})),
+  onPeers:(h,e)=>ROOM.onPeers(c=>h({peers:c.peers.filter(mine),joined:c.joined.filter(mine),left:c.left,updated:c.updated.filter(mine)}),e),
+  leave:async()=>{const clr={};for(const k of NET_KEYS)clr[k]=null;await ROOM.presence(clr);}};}
 async function joinCode(code){if(!ROOM||NET.joining)return;code=String(code||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,6);if(code.length<3){NET.msg='방 코드는 3글자 이상이에요';renderOnline();return;}
  NET.joining=true;NET.msg='방에 들어가는 중...';renderOnline();
- try{if(NET.sub){await NET.sub.leave();NET.sub=null;}const sub=await ROOM.join('brawl-'+code);NET.sub=sub;NET.code=code;NET.gen=0;NET.rdy=0;NET.oppPeer=null;NET.msg='';netTick();
+ try{if(NET.sub){await NET.sub.leave();NET.sub=null;}const sub=codeRoom(code);NET.sub=sub;NET.code=code;NET.gen=0;NET.rdy=0;NET.oppPeer=null;NET.msg='';netTick();
   sub.onPeers(()=>{if(state==='online')renderOnlineLive(findOpp());},e=>{NET.msg='방 연결이 끊겼어요 ('+e.code+')';NET.sub=null;NET.on=false;renderOnline();});
   // 이미 두 명이 있으면 꽉 찬 방
   setTimeout(()=>{if(NET.sub!==sub)return;const others=sub.peers().filter(p=>!p.sameTab&&p.presence&&p.presence.pl===1);
@@ -1008,7 +1016,7 @@ function renderOnline(){const m=$('onMsg'),join=$('onJoin'),wait=$('onWait');
  renderOnlineLive(findOpp());}
 let lastLive='';
 function netDebug(){if(!NET.sub||state!=='online')return;const ps=NET.sub.peers(),c=NET.sub.connected();
- const txt='연결: '+(c?'됨':'안 됨')+' · 방 안 '+ps.length+'명 ('+ps.map(p=>(p.sameTab?'나':p.isMe?'내 다른 창':'다른 사람')+(p.presence&&p.presence.pl===1?'':'·정보 없음')).join(', ')+') · 보낸 신호 '+(NET.pOk||0)+(NET.pErr?' · 오류 '+NET.pErr:'');
+ const all=ROOM.peers().length,txt='연결: '+(c?'됨':'안 됨')+' · 게임 접속 '+all+'명 · 이 방 '+ps.length+'명 ('+ps.map(p=>(p.sameTab?'나':p.isMe?'내 다른 창':'다른 사람')+(p.presence&&p.presence.pl===1?'':'·정보 없음')).join(', ')+') · 보낸 신호 '+(NET.pOk||0)+(NET.pErr?' · 오류 '+NET.pErr:'');
  if($('netDbg').textContent!==txt)$('netDbg').textContent=txt;}
 function renderOnlineLive(opp){if(!NET.sub)return;netDebug();const key=(opp?opp.peer+opp.presence.nm+opp.presence.wp+opp.presence.rdy:'-')+NET.rdy+NET.gen+state+NET.msg;if(key===lastLive)return;lastLive=key;
  const waiting=NET.rdy===NET.gen+1;
