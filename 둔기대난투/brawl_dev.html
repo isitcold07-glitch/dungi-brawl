@@ -352,9 +352,10 @@ function vignette(){const key=W+'x'+H;if(VGs!==key){VGs=key;VG=ctx.createRadialG
 
 /* ================= 대난투 본체 ================= */
 const AR=430;            // 경기장 반지름
-const KB_DIV=60;         // 피해 %가 이만큼 쌓이면 넉백 2배
+const KB_DIV=115;         // 피해 %가 이만큼 쌓이면 넉백 2배
 const FRIC=3.2;          // 날아가는 속도 감속
 const JD_WIN=.3;         // 대시 시작 후 이 시간 안에 맞을 뻔하면 저스트 회피
+const LEDGE_V=300;       // 이보다 약하게 밀리면 가장자리에서 버틴다 (아슬아슬!)
 const SX=x=>x,SY=(y,z=0)=>y*T-z;
 const LEGH=6;
 
@@ -371,13 +372,13 @@ function bgmTick(){if(!AC)return;if(!BG){BG={m:AC.createGain(),tr:{}};BG.m.gain.
 /* ---------- 무기 ---------- */
 // pct: 기본 피해 %, kb: 기본 넉백, dur: 휘두르기 시간, hitT: 판정 시점, cd: 휘두른 뒤 대기
 const WD={
- hammer:{nm:'망치',ic:'🔨',ci:'🌋',dur:.375,reach:80,arc:2.3,hitT:.5,cd:.12,pct:9,kb:290,spd:200,dash:1,rg:.55,sp:.35,pw:.75,desc:'묵직한 한 방',
+ hammer:{nm:'망치',ic:'🔨',ci:'🌋',dur:.36,reach:80,arc:2.3,hitT:.5,cd:.12,pct:9,kb:300,spd:205,dash:1,rg:.55,sp:.35,pw:.75,desc:'묵직한 한 방',
   info:'기본형. 차지: <b>부채꼴 슬램</b> — 넓게 내려찍어 크게 날린다'},
  twin:{nm:'쌍망치',ic:'🔨🔨',ci:'🌀',dur:.17,reach:50,arc:1.8,hitT:.5,cd:.05,pct:3,kb:140,spd:220,dash:2,rg:.3,sp:1,pw:.3,desc:'빠른 연타로 % 쌓기',
   info:'4타마다 양손 내려치기 · <b>대시 2회</b> · 차지: <b>팽이 회전</b> — 여러 번 맞히고 마지막에 튕겨낸다'},
  bat:{nm:'빠따',ic:'🏏',ci:'⚾',dur:.25,reach:74,arc:2.3,hitT:.5,cd:.07,pct:5,kb:170,spd:210,dash:1,rg:.5,sp:.85,pw:1,desc:'3연타, 장외 홈런!',
   info:'좌 → 우 → 내려치기 3연타 · 차지: <b>홈런 스윙</b>(풀차지 딱! + 슬로모션) · 헛치면 빈틈이 크다'},
- pan:{nm:'프라이팬',ic:'🍳',ci:'🛡️',dur:.42,reach:62,arc:2.3,hitT:.45,cd:.1,pct:7,kb:240,spd:225,dash:1,rg:.42,sp:.5,pw:.55,desc:'깡! 저스트 가드',
+ pan:{nm:'프라이팬',ic:'🍳',ci:'🛡️',dur:.42,reach:62,arc:2.3,hitT:.45,cd:.1,pct:6,kb:220,spd:212,dash:1,rg:.42,sp:.5,pw:.55,desc:'깡! 저스트 가드',
   info:'휘두른 직후 맞으면 <b>저스트 가드</b>(무효 + 반격) · 차지: 누르는 동안 <b>팬 방패</b>, 놓으면 철썩 · 차지 공격에는 뚫린다'},
 };
 const WORD=['hammer','twin','bat','pan'];
@@ -468,7 +469,7 @@ function mkF(id,wp,look,bot){const D=WD[wp];return{id,wp,bot,name:look.name||'�
  x:0,y:0,z:0,vz:0,kx:0,ky:0,r:14,pct:0,stocks:3,state:'alive',face:0,mvx:1,mvy:0,walk:0,
  reach:D.reach,arc:D.arc,spd:D.spd,sw:null,swCd:0,swDir:1,queued:false,charging:false,chargeT:0,chargeSnd:0,atkHeld:false,
  slamPend:null,slamCd:0,slamAnim:0,slamA:0,spinA:null,stun:0,lag:0,inv:0,rinv:0,dashT:0,dashN:D.dash,dashMax:D.dash,dashCd:0,dashCdMax:1.4,dvx:0,dvy:0,dashAt:-9,trailT:0,
- jgT:0,guardCd:0,jdBuff:0,jdCd:0,twinN:0,cN:0,cLast:-9,sq:0,flash:0,trail:[],flatT:0,fallT:0,respT:0,koed:0,
+ jgT:0,guardCd:0,ledgeT:-9,jdBuff:0,jdCd:0,twinN:0,cN:0,cLast:-9,sq:0,flash:0,trail:[],flatT:0,fallT:0,respT:0,koed:0,
  inp:{mx:0,my:0,aim:0,atk:false,dash:false},ai:{t:0,str:0,hold:0,tap:false},st:{dealt:0,ko:0,jd:0,guard:0}};}
 const other=f=>F[1-f.id];
 const canAct=f=>f.state==='alive'&&f.stun<=0&&f.lag<=0&&!f.slamPend&&!f.spinA;
@@ -516,16 +517,19 @@ function hitF(att,def,o){if(def.state!=='alive'||def.rinv>0)return 'none';
   if(def.charging&&def.chargeT>.15&&Math.abs(angDiff(tw,def.face))<1.25){
    if(!o.charge){addText(def.x,def.y,def.r*2+30,'막힘!','#ced4da',18,.6);sfx('block');att.kx=-Math.cos(tw)*-220;att.ky=-Math.sin(tw)*-220;att.lag=Math.max(att.lag,.18);def.kx-=Math.cos(tw)*90;def.ky-=Math.sin(tw)*90;freeze=Math.max(freeze,.05);shake=Math.max(shake,5);return 'block';}
    def.charging=false;def.chargeT=0;addText(def.x,def.y,def.r*2+40,'가드 브레이크!','#ff8787',22,1);sfx('clang');o.pct=Math.round(o.pct*1.25);o.kb*=1.15;}}
+ // 망치: 공격 중에는 약한 공격에 끊기지 않는다 (%만 쌓임)
+ if(def.wp==='hammer'&&o.kb<=200&&(def.slamPend||(def.charging&&def.chargeT>.35)||(def.sw&&def.sw.t>.3))){att.st.dealt+=o.pct;def.pct=Math.min(999,def.pct+o.pct);def.flash=.08;
+  addText(def.x+rand(-8,8),def.y,def.r*2+14,'+'+o.pct+'%',pctCol(def.pct),15,.6);if(time-def.ledgeT>.6){def.ledgeT=time;addText(def.x,def.y,def.r*2+36,'버팀!','#ffd8a8',16,.6);}sfx('block');return 'armor';}
  att.st.dealt+=o.pct;const v=applyHit(def,o);
  if(v>950){fx.push({t:'ring',x:def.x,y:def.y,r:110,life:.35,ml:.35,c:'#ffe066',w:10});slow=Math.max(slow,.22);zp=Math.max(zp,.06);addText(def.x,def.y,def.r*2+44,'날아간다!','#ffe066',24,1);}
  return 'hit';}
 function justDodge(def,att){def.jdCd=.6;def.jdBuff=2.5;def.inv=Math.max(def.inv,.45);def.st.jd++;slow=Math.max(slow,.5);zp=Math.max(zp,.05);sfx('jd');
  addText(def.x,def.y,def.r*2+40,'저스트 회피!','#7ae7ff',24,1.1);
  for(let i=0;i<16;i++){const a=rand(0,TAU);parts.push({x:def.x,y:def.y,z:def.r,vx:Math.cos(a)*260,vy:Math.sin(a)*260,life:.4,ml:.4,c:i%2?'#7ae7ff':'#ffffff',s:3,streak:1});}}
-function justGuard(def,att){def.guardCd=1.2;def.jgT=0;def.inv=Math.max(def.inv,.3);def.st.guard++;
+function justGuard(def,att){def.guardCd=1.6;def.jgT=0;def.inv=Math.max(def.inv,.3);def.st.guard++;
  addText(def.x,def.y,def.r*2+40,'저스트 가드!','#9be7ff',22,1);addText(def.x,def.y,def.r*2+68,'깡!','#ffffff',32,.7);sfx('clang');sfx('pan');
  freeze=Math.max(freeze,.1);flash=Math.max(flash,.2);shake=Math.max(shake,12);fx.push({t:'ring',x:def.x,y:def.y,r:100,life:.3,ml:.3,c:'#9be7ff',w:8});
- const dx=att.x-def.x,dy=att.y-def.y,d=Math.hypot(dx,dy)||1;applyHit(att,{pct:4,kb:300,ux:dx/d,uy:dy/d,lift:.5,stun:.45});def.st.dealt+=4;
+ const dx=att.x-def.x,dy=att.y-def.y,d=Math.hypot(dx,dy)||1;applyHit(att,{pct:4,kb:250,ux:dx/d,uy:dy/d,lift:.5,stun:.35});def.st.dealt+=4;
  impact(att.x,att.y,att.r,Math.atan2(dy/d*T,dx/d),true);}
 function inFan(f,o,R,A,half){const dx=o.x-f.x,dy=o.y-f.y,d=Math.hypot(dx,dy)||1;if(d>R+o.r||o.z>70)return null;if(d>f.r+o.r+14&&Math.abs(angDiff(Math.atan2(dy,dx),A))>half+Math.atan2(o.r,d))return null;return{ux:dx/d,uy:dy/d,d};}
 function hitFx(f,o,res,heavy,crit){if(res!=='hit')return;impact(o.x-res.ux,o.y,o.z+o.r,Math.atan2((o.y-f.y)*T,o.x-f.x),crit);}
@@ -534,7 +538,7 @@ function swing(f){if(f.sw||f.swCd>0){f.queued=true;return;}
  const D=WD[f.wp],a=f.inp.aim;f.face=a;f.swDir*=-1;let both=false;if(f.wp==='twin'){f.twinN++;both=f.twinN%4===0;}
  let cmb=0;if(f.wp==='bat'){cmb=f.cN=(time-f.cLast<1.1)?(f.cN+1)%3:0;f.cLast=time;}
  f.sw={a,dir:f.swDir,t:0,dur:D.dur*(both?1.5:1)*(cmb===2?1.3:1),hit:false,both,cmb,down:f.wp==='bat'&&cmb===2};
- if(f.wp==='pan'&&f.guardCd<=0)f.jgT=.4+D.dur*.5;sfx('whoosh');}
+ if(f.wp==='pan'&&f.guardCd<=0)f.jgT=.3+D.dur*.4;sfx('whoosh');}
 function swingHit(f,s){const o=other(f),D=WD[f.wp],jd=f.jdBuff>0;if(o.state!=='alive')return;
  const R=f.reach+22+(jd?30:0),arc=s.both?f.arc+.8:s.down?1.4:f.arc,h=inFan(f,o,R,s.a,arc/2+.3);if(!h)return;
  let pct=D.pct,kb=D.kb,stun=0,lift=1;
@@ -554,19 +558,19 @@ function release(f){const ch=f.chargeT;f.charging=false;f.chargeT=0;if(!canAct(f
   if(f.wp==='hammer'){f.slamPend={t:0,k};f.slamCd=2;sfx('jump');}else if(f.wp==='twin')startSpin(f,k);else if(f.wp==='bat')homer(f,k);else panSlap(f,k);}
  else swing(f);}
 function slam(f,k){const o=other(f),R=150*(.85+.65*k),half=Math.PI/6+Math.PI/3*k,A=f.face;camKick(A,9);
- f.slamAnim=.45;f.sq=1;f.lag=.4;f.slamA=A;
+ f.slamAnim=.45;f.sq=1;f.lag=.28;f.slamA=A;
  cracks.push({x:f.x,y:f.y,life:2.4,ml:2.4,lines:mkCrack(R,A,half)});
  fx.push({t:'fan',x:f.x,y:f.y,r:R,a:A,h:half,life:.45,ml:.45});fx.push({t:'fanw',x:f.x,y:f.y,r:R*1.1,a:A,h:half,life:.3,ml:.3});
  for(let i=0;i<30;i++){const a=A+rand(-half,half),r=rand(10,R),s=rand(60,300);parts.push({x:f.x+Math.cos(a)*r,y:f.y+Math.sin(a)*r,z:2,vz:rand(200,600),vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.5,.9),ml:.9,c:i%3?'#8d7f6e':'#ffd43b',s:rand(3,7),g:1});}
  addText(f.x+Math.cos(A)*R*.6,f.y+Math.sin(A)*R*.6,40,'쾅!!','#ffd43b',30+10*k,.9);
- const h=inFan(f,o,R,A,half);if(h){const res=hitF(f,o,{pct:Math.round(14+8*k),kb:520+400*k,ux:h.ux,uy:h.uy,charge:true,lift:1.3,stun:.2});if(res==='hit')impact(o.x,o.y,o.z+o.r,Math.atan2(h.uy*T,h.ux),true);}
+ const h=inFan(f,o,R,A,half);if(h){const res=hitF(f,o,{pct:Math.round(14+8*k),kb:520+400*k,ux:h.ux,uy:h.uy,charge:true,lift:1,stun:.2});if(res==='hit')impact(o.x,o.y,o.z+o.r,Math.atan2(h.uy*T,h.ux),true);}
  freeze=Math.max(freeze,.12+.07*k);shake=Math.max(shake,16+14*k);flash=Math.max(flash,.12+.1*k);if(k>=1){slow=Math.max(slow,.25);zp=Math.max(zp,.06);}sfx('slam');sfx('heavy');}
 function spinR(f){return f.reach*1.5+20;}
 function startSpin(f,k){const dur=.6+.9*k;f.spinA={t:0,dur,tick:0,k,a:f.face};f.slamCd=2+dur;f.sw=null;sfx('whoosh');}
 function spinTick(f,fin){const o=other(f),R=spinR(f)*(fin?1.15:1);fx.push({t:'ring',x:f.x,y:f.y,r:R,life:fin?.3:.16,ml:fin?.3:.16,c:fin?'#9be7ff':'rgba(220,240,255,.7)',w:fin?9:5});
  for(let i=0;i<4;i++){const a=rand(0,TAU);parts.push({x:f.x+Math.cos(a)*R*.8,y:f.y+Math.sin(a)*R*.8,z:rand(8,30),vx:-Math.sin(a)*380,vy:Math.cos(a)*380,life:.22,ml:.22,c:'#e9f6ff',s:3,streak:1});}
  sfx('whoosh');if(o.state!=='alive'||o.z>50)return;const dx=o.x-f.x,dy=o.y-f.y,d=Math.hypot(dx,dy)||1;if(d>R+o.r)return;const ux=dx/d,uy=dy/d;
- const res=fin?hitF(f,o,{pct:5,kb:380+220*f.spinA.k,ux,uy,charge:true,lift:.8}):hitF(f,o,{pct:2,kb:150,ux:(ux-uy)*.71,uy:(uy+ux)*.71,charge:true,lift:.25});
+ const res=fin?hitF(f,o,{pct:6,kb:430+240*f.spinA.k,ux,uy,charge:true,lift:.8}):hitF(f,o,{pct:2,kb:150,ux:(ux-uy)*.71,uy:(uy+ux)*.71,charge:true,lift:.25});
  if(res==='hit'){impact(o.x,o.y,o.z+o.r,Math.atan2(uy*T,ux),fin);sfx('hit');freeze=Math.max(freeze,fin?.1:.02);shake=Math.max(shake,fin?12:4);if(fin){sfx('heavy');addText(o.x,o.y,50,'팅!','#9be7ff',26,.7);}}}
 function homer(f,k){const o=other(f),A=f.face,R=f.reach*1.35+20+30*k,half=.55+.25*k,ux=Math.cos(A),uy=Math.sin(A);
  f.sw={a:A,dir:ux>=0?1:-1,t:.3,dur:.2,hit:true,cmb:0};f.slamCd=1.6;f.sq=1;
@@ -615,8 +619,10 @@ function updF(f,dt){const live=state==='play';
  if(f.z>0||f.vz>0){f.vz-=GRAV*dt;f.z+=f.vz*dt;if(f.z<=0){const v=-f.vz;f.z=0;land(f,v);}}
  // 링 아웃 / 가장자리
  const d=Math.hypot(f.x,f.y)||1;
- if(d>AR&&f.z<=2&&(f.stun>0||kv>=60))startFall(f);
- else if(d>AR-f.r*.5&&f.z<=2){const m=(AR-f.r*.5)/d;f.x*=m;f.y*=m;}
+ if(d>AR&&f.z<=2&&(kv>=LEDGE_V||d>AR+f.r))startFall(f); // 바닥이 없는 곳에 내려앉으면 무조건 낙하
+ else if(d>AR-f.r*.5&&f.z<=2){const m=(AR-f.r*.5)/d;f.x*=m;f.y*=m;
+  // 바깥쪽으로 밀리던 힘은 버티면서 없어진다
+  const ux=f.x/d,uy=f.y/d,out=f.kx*ux+f.ky*uy;if(out>0){f.kx-=ux*out;f.ky-=uy*out;if(out>120&&time-f.ledgeT>1){f.ledgeT=time;addText(f.x,f.y,f.r*2+30,'아슬아슬!','#ffe066',18,.8);sfx('block');}}}
  if(!f.sw&&!f.slamPend&&!f.charging&&!f.spinA&&f.stun<=0&&f.dashT<=0)f.face=f.inp.aim;
  f.walk=(mx||my)&&sm>0||f.dashT>0?(f.walk||0)+dt*14:0;}
 function separate(){const a=F[0],b=F[1];if(a.state!=='alive'||b.state!=='alive'||a.z>30||b.z>30)return;const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy)||1,m=a.r+b.r+4;if(d<m){const p=(m-d)/2;a.x-=dx/d*p;a.y-=dy/d*p;b.x+=dx/d*p;b.y+=dy/d*p;}}
