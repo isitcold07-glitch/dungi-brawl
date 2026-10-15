@@ -984,7 +984,8 @@ function netTick(){if(!NET.sub)return;const opp=findOpp();
  if(opp.presence!==NET.lastP){NET.lastP=opp.presence;unpackF(F[1],g.g);
   if(state==='play'||state==='count')for(const h of(Array.isArray(g.hits)?g.hits:[]).slice().sort((a,b)=>a.n-b.n)){if(!(+h.n>NET.seen))continue;NET.seen=+h.n;if(h.g===NET.gen&&h.rd===MATCH.round&&state==='play')netRecvHit(h);}}}
 function startOnline(opp){const g=opp.presence;NET.on=true;NET.msg='';NET.side=myPeer()<opp.peer?0:1;NET.oppGoneT=0;NET.lastP=null;NET.tgt=null;
- MATCH={bo:3,w:[0,0],round:1,need:2,over:false,st:[newSt(),newSt()],looks:[LOOK,lookOf(g)],wps:[CFG.wp,wpOf(g)],bots:[false,false]};
+ const ol=lookOf(g);if(ol.col===LOOK.col)ol.col=COLS.find(c=>c!==LOOK.col&&c!=='#868e96'); // 같은 색이면 내 화면에서만 바꿔 구분
+ MATCH={bo:3,w:[0,0],round:1,need:2,over:false,st:[newSt(),newSt()],looks:[LOOK,ol],wps:[CFG.wp,wpOf(g)],bots:[false,false]};
  matchT=0;audio();startRound();}
 async function joinCode(code){if(!ROOM||NET.joining)return;code=String(code||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,6);if(code.length<3){NET.msg='방 코드는 3글자 이상이에요';renderOnline();return;}
  NET.joining=true;NET.msg='방에 들어가는 중...';renderOnline();
