@@ -831,11 +831,24 @@ function draw(rdt){
  for(const t of texts){ctx.globalAlpha=Math.min(1,t.life/t.ml*2.5);const pop=1+Math.max(0,(t.life/t.ml-.8))*2.5;ctx.font=`900 ${Math.round(t.s*pop)}px system-ui`;ctx.lineWidth=4;ctx.strokeStyle='rgba(0,0,0,.75)';const x=SX(t.x),y=SY(t.y,t.h);ctx.strokeText(t.t,x,y);ctx.fillStyle=t.c;ctx.fillText(t.t,x,y);}
  ctx.globalAlpha=1;ctx.restore();
  vignette();
+ drawOffscreen(z);
  if(flash>0){ctx.fillStyle=`rgba(255,240,210,${Math.min(.55,flash)})`;ctx.fillRect(0,0,W,H);}
  const me=F[0];if(me&&me.jdBuff>2.1){const g=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.3,W/2,H/2,Math.hypot(W,H)*.55);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,`rgba(80,200,255,${(me.jdBuff-2.1)})`);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);}
  if(F.length&&state!=='menu')drawHUD();
  if(joy.on&&state==='play'){ctx.globalAlpha=.35;ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(joy.sx,joy.sy,55,0,TAU);ctx.stroke();
   const dx=joy.x-joy.sx,dy=joy.y-joy.sy,l=Math.hypot(dx,dy),k=l>55?55/l:1;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(joy.sx+dx*k,joy.sy+dy*k,22,0,TAU);ctx.fill();ctx.globalAlpha=1;}}
+// 화면 밖으로 나간 캐릭터: 가장자리에 얼굴 + % 말풍선, 화살표로 방향 표시
+function drawOffscreen(z){if(!F.length||state==='menu')return;const top=10,bot=H-100,M=34;
+ for(const f of F){if(f.state!=='alive'&&!(f.state==='fall'&&f.fallT<.6))continue;
+  const px=W/2+kick.x+(SX(f.x)-cam.x)*z,py=H/2+30+kick.y+(SY(f.y,fz(f)+f.r)-cam.y*T)*z;
+  if(px>-8&&px<W+8&&py>top-8&&py<bot+30)continue;
+  const cx=Math.max(M,Math.min(W-M,px)),cy=Math.max(top+M,Math.min(bot-M,py)),a=Math.atan2(py-cy,px-cx),R=26;
+  ctx.save();ctx.translate(cx,cy);
+  ctx.fillStyle=f.tc;ctx.beginPath();ctx.moveTo(Math.cos(a)*(R+14),Math.sin(a)*(R+14));ctx.lineTo(Math.cos(a+.5)*R,Math.sin(a+.5)*R);ctx.lineTo(Math.cos(a-.5)*R,Math.sin(a-.5)*R);ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(10,6,16,.85)';ctx.beginPath();ctx.arc(0,0,R,0,TAU);ctx.fill();ctx.strokeStyle=f.tc;ctx.lineWidth=3;ctx.stroke();
+  ctx.save();ctx.beginPath();ctx.arc(0,0,R-2,0,TAU);ctx.clip();const sp=pSprite(14,f.col,f.hat);ctx.drawImage(sp.c,-22,-28,44,44);ctx.restore();
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='900 13px system-ui';ctx.lineWidth=3;ctx.strokeStyle='#000';const t=Math.round(f.pct)+'%';ctx.strokeText(t,0,R-6);ctx.fillStyle=pctCol(f.pct);ctx.fillText(t,0,R-6);
+  ctx.restore();}}
 function rr2(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);}
 function drawHUD(){const cw=Math.min(240,(W-36)/2),ch=74,y=H-ch-12;ctx.textBaseline='middle';
  F.forEach((f,i)=>{const x=W/2+(i?6:-6-cw),hit=Math.max(0,f.flash)*8;
