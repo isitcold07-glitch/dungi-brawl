@@ -800,7 +800,7 @@ $('atkBtn').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagati
 const atkEnd=e=>{e.preventDefault();pAtk=false;};$('atkBtn').addEventListener('touchend',atkEnd,{passive:false});$('atkBtn').addEventListener('touchcancel',atkEnd,{passive:false});
 $('dashBtn').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();if(state==='play'&&F[0])F[0].inp.dash=true;},{passive:false});
 $('startBtn').onclick=start;$('retryBtn').onclick=retry;$('onBtn').onclick=openOnline;
-$('mkRoom').onclick=()=>{const a='abcdefghjkmnpqrstuvwxyz23456789';let c='';for(let i=0;i<4;i++)c+=a[Math.random()*a.length|0];joinCode(c);};
+$('mkRoom').onclick=()=>{const a='abcdefghjkmnpqrstuvwxyz23456789';let c='';for(let i=0;i<4;i++)c+=a[Math.random()*a.length|0];joinCode(c,true);};
 $('joinRoom').onclick=()=>joinCode($('codeIn').value);$('codeIn').addEventListener('keydown',e=>{if(e.code==='Enter')joinCode($('codeIn').value);e.stopPropagation();});
 $('readyBtn').onclick=toggleReady;$('leaveRoom').onclick=()=>{leaveOnline();NET.msg='';renderOnline();};$('onBack').onclick=()=>{toMenu();};$('resumeBtn').onclick=()=>setPause(false);$('quitBtn').onclick=toMenu;$('menuBtn').onclick=toMenu;
 
@@ -1006,7 +1006,28 @@ function drawHUD(){const cw=Math.min(240,(W-36)/2),ch=74,y=H-ch-12;ctx.textBasel
  자기 실제 상태로 막기·저스트 회피·가드를 판정해 넉백을 적용한다. 목숨은 각자 상대가 보낸 값이 줄면 장외 연출·점수 처리. */
 let ROOM=null,ROOM_ST='wait'; // wait → ok / none
 const NET={rtt:0,predT:0,vel:{x:0,y:0},lp:null,recvT:0,oppTm:null,on:false,sub:null,code:'',gen:0,rdy:0,hitN:0,hits:[],seen:0,oppPeer:null,oppGoneT:0,prevStocks:3,lastP:null,tgt:null,side:0,msg:'',joining:false};
-(async()=>{try{ROOM=window.claude&&window.claude.use?await window.claude.use('room'):null;}catch(e){ROOM=null;}ROOM_ST=ROOM?'ok':'none';if(state==='online')renderOnline();})();
+// 연결 방식: Claude 아티팩트 안이면 room, 그 밖(GitHub Pages 등)이면 PeerJS로 두 컴퓨터를 직접 연결(P2P)
+const PEERJS_URL='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+(async()=>{if(window.claude&&window.claude.use){try{ROOM=await window.claude.use('room');}catch(e){ROOM=null;}ROOM_ST=ROOM?'ok':'none';}
+ else{ROOM_ST=await new Promise(res=>{if(window.Peer)return res('p2p');const sc=document.createElement('script');sc.src=PEERJS_URL;sc.onload=()=>res(window.Peer?'p2p':'none');sc.onerror=()=>res('none');document.head.appendChild(sc);setTimeout(()=>res(window.Peer?'p2p':'none'),12000);});}
+ if(state==='online')renderOnline();})();
+// P2P 방: 방장은 'dungibrawl-코드' 이름으로 기다리고, 참가자가 그 이름으로 연결한다. room과 같은 모양(peers·presence·connected·onPeers·leave)으로 감싼다
+function p2pRoom(code,host){return new Promise((resolve,reject)=>{const hostId='dungibrawl-'+code;let conn=null,opp=null,myP=Object.freeze({}),snap=null,done=false;const hs=[];
+ const peer=host?new Peer(hostId):new Peer();
+ const fire=()=>{snap=null;for(const h of hs)setTimeout(()=>h({peers:api.peers(),joined:[],left:[],updated:[]}),0);};
+ const api={name:code,
+  peers:()=>{if(snap)return snap;const a=[Object.freeze({peer:peer.id||'me',isMe:true,sameTab:true,kind:'viewer',presence:myP})];if(conn&&conn.open&&opp)a.push(Object.freeze({peer:conn.peer,isMe:false,sameTab:false,kind:'viewer',presence:opp}));return snap=Object.freeze(a);},
+  connected:()=>!!(conn&&conn.open),
+  presence:async o=>{const m=Object.assign({},myP);for(const k in o){if(o[k]===null)delete m[k];else m[k]=o[k];}myP=Object.freeze(m);snap=null;if(conn&&conn.open)conn.send(m);},
+  onPeers:(h,e)=>{hs.push(h);api.onErr=e;return()=>{};},
+  leave:async()=>{try{conn&&conn.close();}catch(e){}try{peer.destroy();}catch(e){}}};
+ const setup=c=>{c.on('open',()=>{conn=c;c.send(myP);fire();if(!done){done=true;resolve(api);}});
+  c.on('data',d=>{if(d&&typeof d==='object'&&!Array.isArray(d)){const first=!opp;opp=Object.freeze(d);snap=null;if(first)fire();}});
+  c.on('close',()=>{if(conn===c){conn=null;opp=null;fire();}});c.on('error',()=>{});};
+ peer.on('open',()=>{if(host){done=true;resolve(api);}else setup(peer.connect(hostId,{serialization:'json',reliable:false}));});
+ peer.on('connection',c=>{if(conn&&conn.open){c.on('open',()=>c.close());return;}setup(c);});
+ peer.on('error',e=>{const t=e&&e.type;if(!done){done=true;try{peer.destroy();}catch(_){}reject({code:t==='peer-unavailable'?'방을 찾을 수 없어요':t==='unavailable-id'?'이미 쓰는 방 코드예요. 다시 만들어 주세요':t==='network'||t==='server-error'||t==='socket-error'?'연결 서버에 접속하지 못했어요':(t||'오류')});}});
+ setTimeout(()=>{if(!done){done=true;try{peer.destroy();}catch(_){}reject({code:'시간 초과'});}},15000);});}
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const r1=v=>Math.round(v*10)/10,r2=v=>Math.round(v*100)/100;
 function myPeer(){const p=NET.sub&&NET.sub.peers().find(q=>q.sameTab);return p?p.peer:'';}
@@ -1095,9 +1116,9 @@ function codeRoom(code){const mine=p=>p.sameTab||(p.presence&&p.presence.rm===co
   presence:o=>ROOM.presence(Object.assign({},o,{rm:code})),
   onPeers:(h,e)=>ROOM.onPeers(c=>h({peers:c.peers.filter(mine),joined:c.joined.filter(mine),left:c.left,updated:c.updated.filter(mine)}),e),
   leave:async()=>{const clr={};for(const k of NET_KEYS)clr[k]=null;await ROOM.presence(clr);}};}
-async function joinCode(code){if(!ROOM||NET.joining)return;code=String(code||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,6);if(code.length<3){NET.msg='방 코드는 3글자 이상이에요';renderOnline();return;}
+async function joinCode(code,host){if((!ROOM&&ROOM_ST!=='p2p')||NET.joining)return;code=String(code||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,6);if(code.length<3){NET.msg='방 코드는 3글자 이상이에요';renderOnline();return;}
  NET.joining=true;NET.msg='방에 들어가는 중...';renderOnline();
- try{if(NET.sub){await NET.sub.leave();NET.sub=null;}const sub=codeRoom(code);NET.sub=sub;NET.code=code;NET.gen=0;NET.rdy=0;NET.oppPeer=null;NET.msg='';netTick();
+ try{if(NET.sub){await NET.sub.leave();NET.sub=null;}const sub=ROOM_ST==='p2p'?await p2pRoom(code,!!host):codeRoom(code);NET.sub=sub;NET.code=code;NET.gen=0;NET.rdy=0;NET.oppPeer=null;NET.msg='';netTick();
   sub.onPeers(()=>{if(state==='online')renderOnlineLive(findOpp());},e=>{NET.msg='방 연결이 끊겼어요 ('+e.code+')';NET.sub=null;NET.on=false;renderOnline();});
   // 이미 두 명이 있으면 꽉 찬 방
   setTimeout(()=>{if(NET.sub!==sub)return;const others=sub.peers().filter(p=>!p.sameTab&&p.presence&&p.presence.pl===1);
@@ -1108,14 +1129,14 @@ function leaveOnline(){if(NET.sub){NET.sub.leave().catch(()=>{});}NET.sub=null;N
 function openOnline(){state='online';NET.msg='';renderOnline();show('online');}
 function renderOnline(){const m=$('onMsg'),join=$('onJoin'),wait=$('onWait');
  if(ROOM_ST==='wait'){m.textContent='온라인 연결 확인 중...';join.style.display='none';wait.style.display='none';return;}
- if(!ROOM){m.innerHTML='온라인 대결은 <b>Claude에 로그인</b>하고 <b>이 게임에 이메일로 초대받은 사람</b>만 할 수 있어요.<br>게임 주인이 공유 설정의 일반 액세스를 <b>\'링크가 있는 모든 사용자\'</b>로 해 두면 초대받아도 안 돼요 → <b>제한됨</b>으로 바꿔 주세요.<br>지금 화면에서는 봇 대결만 할 수 있어요.';join.style.display='none';wait.style.display='none';return;}
- m.textContent=NET.msg||(NET.sub?'':'방을 만들고 코드를 친구에게 알려 주세요. 친구는 같은 게임 링크에서 코드를 입력하면 돼요.');
+ if(!ROOM&&ROOM_ST!=='p2p'){m.innerHTML=ROOM_ST==='none'&&!window.claude?'온라인 연결 도구(PeerJS)를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.':'온라인 대결은 <b>Claude에 로그인</b>하고 <b>이 게임에 이메일로 초대받은 사람</b>만 할 수 있어요.<br>게임 주인이 공유 설정의 일반 액세스를 <b>\'링크가 있는 모든 사용자\'</b>로 해 두면 초대받아도 안 돼요 → <b>제한됨</b>으로 바꿔 주세요.<br>지금 화면에서는 봇 대결만 할 수 있어요.';join.style.display='none';wait.style.display='none';return;}
+ m.textContent=NET.msg||(NET.sub?'':'방을 만들고 코드를 친구에게 알려 주세요. 친구는 같은 게임 링크에서 코드를 입력하면 돼요.'+(ROOM_ST==='p2p'?' (P2P 직접 연결)':''));
  join.style.display=NET.sub?'none':'block';wait.style.display=NET.sub?'block':'none';
  if(NET.sub){$('codeShow').textContent=NET.code.toUpperCase();$('myWp').textContent=WD[CFG.wp].ic+' '+WD[CFG.wp].nm;}
  renderOnlineLive(findOpp());}
 let lastLive='';
 function netDebug(){if(!NET.sub||state!=='online')return;const ps=NET.sub.peers(),c=NET.sub.connected();
- const all=ROOM.peers().length,txt='연결: '+(c?'됨':'안 됨')+' · 게임 접속 '+all+'명 · 이 방 '+ps.length+'명 ('+ps.map(p=>(p.sameTab?'나':p.isMe?'내 다른 창':'다른 사람')+(p.presence&&p.presence.pl===1?'':'·정보 없음')).join(', ')+') · 보낸 신호 '+(NET.pOk||0)+(NET.pErr?' · 오류 '+NET.pErr:'');
+ const all=ROOM?ROOM.peers().length:'P2P',txt='연결: '+(c?'됨':'안 됨')+' · 게임 접속 '+all+'명 · 이 방 '+ps.length+'명 ('+ps.map(p=>(p.sameTab?'나':p.isMe?'내 다른 창':'다른 사람')+(p.presence&&p.presence.pl===1?'':'·정보 없음')).join(', ')+') · 보낸 신호 '+(NET.pOk||0)+(NET.pErr?' · 오류 '+NET.pErr:'');
  if($('netDbg').textContent!==txt)$('netDbg').textContent=txt;}
 function renderOnlineLive(opp){if(!NET.sub)return;netDebug();const key=(opp?opp.peer+opp.presence.nm+opp.presence.wp+opp.presence.rdy:'-')+NET.rdy+NET.gen+state+NET.msg;if(key===lastLive)return;lastLive=key;
  const waiting=NET.rdy===NET.gen+1;
