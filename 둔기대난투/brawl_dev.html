@@ -927,7 +927,7 @@ const NET={on:false,sub:null,code:'',gen:0,rdy:0,hitN:0,hits:[],seen:0,oppPeer:n
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const r1=v=>Math.round(v*10)/10,r2=v=>Math.round(v*100)/100;
 function myPeer(){const p=NET.sub&&NET.sub.peers().find(q=>q.sameTab);return p?p.peer:'';}
-function findOpp(){if(!NET.sub)return null;const ps=NET.sub.peers().filter(p=>!p.isMe&&p.kind==='viewer'&&p.presence&&p.presence.pl===1).sort((a,b)=>a.peer<b.peer?-1:1);
+function findOpp(){if(!NET.sub)return null;const ps=NET.sub.peers().filter(p=>!p.sameTab&&p.kind==='viewer'&&p.presence&&p.presence.pl===1).sort((a,b)=>a.peer<b.peer?-1:1);
  return ps.find(p=>p.peer===NET.oppPeer)||ps[0]||null;}
 // 상대가 보낸 꾸미기 값은 믿지 않고 허용된 값만 쓴다
 function lookOf(p){const ok=(v,l)=>l.some(x=>x[0]===v);return{name:String(p.nm||'상대').slice(0,8)||'상대',col:/^#[0-9a-fA-F]{6}$/.test(p.col)&&COLS.includes(p.col)?p.col:'#868e96',
@@ -992,7 +992,7 @@ async function joinCode(code){if(!ROOM||NET.joining)return;code=String(code||'')
  try{if(NET.sub){await NET.sub.leave();NET.sub=null;}const sub=await ROOM.join('brawl-'+code);NET.sub=sub;NET.code=code;NET.gen=0;NET.rdy=0;NET.oppPeer=null;NET.msg='';
   sub.onPeers(()=>{},e=>{NET.msg='방 연결이 끊겼어요 ('+e.code+')';NET.sub=null;NET.on=false;renderOnline();});
   // 이미 두 명이 있으면 꽉 찬 방
-  setTimeout(()=>{if(NET.sub!==sub)return;const others=sub.peers().filter(p=>!p.isMe&&p.presence&&p.presence.pl===1);
+  setTimeout(()=>{if(NET.sub!==sub)return;const others=sub.peers().filter(p=>!p.sameTab&&p.presence&&p.presence.pl===1);
    if(others.length>=2&&!others.some(p=>p.presence.op===myPeer())){leaveOnline();NET.msg='방이 꽉 찼어요 (2명까지)';renderOnline();}},1500);}
  catch(e){NET.msg='방에 들어가지 못했어요'+(e&&e.code?' ('+e.code+')':'');NET.sub=null;}
  NET.joining=false;renderOnline();}
