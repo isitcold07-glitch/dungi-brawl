@@ -982,8 +982,8 @@ function startOnline(opp){const g=opp.presence;NET.on=true;NET.msg='';NET.side=m
  matchT=0;audio();startRound();}
 async function joinCode(code){if(!ROOM||NET.joining)return;code=String(code||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,6);if(code.length<3){NET.msg='방 코드는 3글자 이상이에요';renderOnline();return;}
  NET.joining=true;NET.msg='방에 들어가는 중...';renderOnline();
- try{if(NET.sub){await NET.sub.leave();NET.sub=null;}const sub=await ROOM.join('brawl-'+code);NET.sub=sub;NET.code=code;NET.gen=0;NET.rdy=0;NET.oppPeer=null;NET.msg='';
-  sub.onPeers(()=>{},e=>{NET.msg='방 연결이 끊겼어요 ('+e.code+')';NET.sub=null;NET.on=false;renderOnline();});
+ try{if(NET.sub){await NET.sub.leave();NET.sub=null;}const sub=await ROOM.join('brawl-'+code);NET.sub=sub;NET.code=code;NET.gen=0;NET.rdy=0;NET.oppPeer=null;NET.msg='';netTick();
+  sub.onPeers(()=>{if(state==='online')renderOnlineLive(findOpp());},e=>{NET.msg='방 연결이 끊겼어요 ('+e.code+')';NET.sub=null;NET.on=false;renderOnline();});
   // 이미 두 명이 있으면 꽉 찬 방
   setTimeout(()=>{if(NET.sub!==sub)return;const others=sub.peers().filter(p=>!p.sameTab&&p.presence&&p.presence.pl===1);
    if(others.length>=2&&!others.some(p=>p.presence.op===myPeer())){leaveOnline();NET.msg='방이 꽉 찼어요 (2명까지)';renderOnline();}},1500);}
@@ -1002,8 +1002,10 @@ let lastLive='';
 function renderOnlineLive(opp){if(!NET.sub)return;const key=(opp?opp.peer+opp.presence.nm+opp.presence.wp+opp.presence.rdy:'-')+NET.rdy+NET.gen+state+NET.msg;if(key===lastLive)return;lastLive=key;
  const waiting=NET.rdy===NET.gen+1;
  if(state==='online'){$('oppInfo').innerHTML=opp?'상대: <b>'+esc(lookOf(opp.presence).name)+'</b> '+WD[wpOf(opp.presence)].ic+' '+WD[wpOf(opp.presence)].nm+(opp.presence.rdy===NET.gen+1?' · <b style="color:#69db7c">준비 완료</b>':' · 준비 중...'):'상대를 기다리는 중... 친구에게 방 코드를 알려 주세요';
-  $('readyBtn').textContent=waiting?'준비 취소':'준비!';$('readyBtn').disabled=!opp&&!waiting;$('readyBtn').style.opacity=!opp&&!waiting?.5:1;if(NET.msg)$('onMsg').textContent=NET.msg;}
+  $('readyBtn').textContent=!opp&&!waiting?'상대 기다리는 중':waiting?'준비 취소':'준비!';$('readyBtn').disabled=!opp&&!waiting;$('readyBtn').style.opacity=!opp&&!waiting?.5:1;if(NET.msg)$('onMsg').textContent=NET.msg;}
  if(state==='over'){$('retryBtn').textContent=!NET.sub||!opp?'상대 없음':waiting?'상대 기다리는 중...':opp.presence.rdy===NET.gen+1?'재대결 수락!':'재대결';$('ovNet').textContent=!opp?'상대가 방을 나갔어요':opp.presence.rdy===NET.gen+1&&!waiting?'상대가 재대결을 원해요!':'';}}
+// 안 보이는 탭에서는 화면 갱신(requestAnimationFrame)이 멈추므로, 그동안에도 방 신호는 타이머로 보낸다
+setInterval(()=>{if(document.hidden){try{netTick();}catch(e){}}},400);
 function toggleReady(){if(!NET.sub)return;NET.rdy=NET.rdy===NET.gen+1?0:NET.gen+1;audio();renderOnlineLive(findOpp());}
 
 /* ---------- 루프 ---------- */
