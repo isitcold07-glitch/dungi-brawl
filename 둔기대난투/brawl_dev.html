@@ -11,7 +11,8 @@ canvas{display:block}
 #c{cursor:crosshair}
 .ov{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(8,4,14,.8);backdrop-filter:blur(3px);z-index:10;padding:16px;text-align:center}
 .ov.show{display:flex}
-#menu,#look{overflow-y:auto;justify-content:safe center}
+.ov{overflow-y:auto;justify-content:flex-start}.ov>:first-child{margin-top:auto}.ov>:last-child{margin-bottom:auto}
+
 h1{font-size:clamp(36px,8vw,76px);font-weight:900;letter-spacing:2px;background:linear-gradient(180deg,#ffe066,#ff6b1a 60%,#d6001c);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:6px;filter:drop-shadow(0 4px 0 #3a0008)}
 h1 small{display:block;font-size:.42em;letter-spacing:8px}
 h2{font-size:clamp(26px,6vw,42px);font-weight:900;margin-bottom:12px;color:#ffd43b}
@@ -58,6 +59,7 @@ p.sub{opacity:.85;margin-bottom:14px;line-height:1.6}
 #ultBtn{right:30px;bottom:212px;width:64px;height:64px;background:rgba(255,212,59,.12);border:2px solid #ffd43b66;font-size:13px;opacity:.45}
 #ultBtn.full{opacity:1;background:rgba(255,212,59,.35);border-color:#ffd43b;box-shadow:0 0 18px #ffd43b}
 #dashBtn{right:124px;bottom:104px;width:62px;height:62px;background:rgba(122,231,255,.15);border:2px solid #7ae7ff99;font-size:14px}
+@media (max-height:520px){h1{font-size:clamp(28px,7vh,48px)}h2{font-size:24px;margin-bottom:6px}.stats{gap:10px;margin-bottom:10px;font-size:13px;line-height:1.5}.stats div{min-width:150px;padding:6px 12px}.stats b{font-size:15px}.btn{font-size:16px;padding:9px 26px}#online .code{font-size:34px;padding:2px 16px;margin:2px 0 6px}}
 </style>
 </head>
 <body>
@@ -900,7 +902,9 @@ function botAI(b,t,dt){const A=b.ai,Q=BOTD[CFG.lv],inp=b.inp;inp.mx=inp.my=0;
 
 /* ---------- 입력 ---------- */
 const keys={},mouse={x:0,y:0};let useMouse=false,isTouch=false,pAtk=false;let joy={on:false,id:null,sx:0,sy:0,x:0,y:0};
-function s2w(sx,sy){return{x:(sx-W/2)/cam.z+cam.x,y:(sy-(H/2+30))/cam.z/T+cam.y};}
+// 화면에서 경기장 가운데가 놓이는 높이: 아래 점수판(약 90px)을 뺀 영역의 가운데
+const camCY=()=>Math.round((H-90)/2+(H>520?24:8));
+function s2w(sx,sy){return{x:(sx-W/2)/cam.z+cam.x,y:(sy-camCY())/cam.z/T+cam.y};}
 function playerInput(f){const i=f.inp;let mx=0,my=0;
  if(keys.KeyW||keys.ArrowUp)my--;if(keys.KeyS||keys.ArrowDown)my++;if(keys.KeyA||keys.ArrowLeft)mx--;if(keys.KeyD||keys.ArrowRight)mx++;
  if(joy.on){const dx=joy.x-joy.sx,dy=joy.y-joy.sy,l=Math.hypot(dx,dy);if(l>8){const k=Math.min(1,l/55);mx=dx/l*k;my=dy/l*k;}}
@@ -1001,10 +1005,10 @@ function showOver(){state='over';pAtk=false;NET.rdy=0;lastLive='';$('ovNet').tex
  show('over');}
 
 /* ---------- 카메라 ---------- */
-function camTick(dt){const zFit=Math.min(W/(2*AR+140),H/(2*AR*T+240));let tx=0,ty=0,tz=zFit;
+function camTick(dt){const GH=H-90,zFit=Math.min(W/(2*AR+140),GH/(2*AR*T+170)),pad=isTouch||W<700?560:420;let tx=0,ty=0,tz=zFit;
  if(F.length&&(state!=='menu')){const al=F.filter(f=>f.state==='alive'||f.state==='fall');
   if(al.length){let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(const f of al){x0=Math.min(x0,f.x);x1=Math.max(x1,f.x);y0=Math.min(y0,f.y-Math.max(0,f.z)/T);y1=Math.max(y1,f.y);}
-   tx=(x0+x1)/2*.55;ty=(y0+y1)/2*.55;tz=Math.max(zFit,Math.min(1.25,W/(x1-x0+420),H/((y1-y0)*T+380)));}}
+   tx=(x0+x1)/2*.55;ty=(y0+y1)/2*.55;tz=Math.max(zFit,Math.min(1.25,W/(x1-x0+pad),GH/((y1-y0)*T+pad*.8)));if(W<H)tz=Math.min(tz,zFit*1.3);/* 세로 화면: 경기장이 거의 다 보이게 */}}
  else{tx=Math.sin(rtime*.2)*40;ty=Math.cos(rtime*.15)*20;}
  const k=1-Math.exp(-3*dt);cam.x+=(tx-cam.x)*k;cam.y+=(ty-cam.y)*k;cam.z+=(tz-cam.z)*k;}
 
@@ -1071,7 +1075,7 @@ function drawKO(){for(const f of fx){if(f.t!=='ko')continue;const k=1-f.life/f.m
 function draw(rdt){
  drawBack();
  const sx=(Math.random()-.5)*shake*1.4,sy=(Math.random()-.5)*shake*1.4,z=cam.z*(1+zp);
- ctx.save();ctx.translate(W/2+sx+kick.x,H/2+30+sy+kick.y);ctx.scale(z,z);ctx.translate(-cam.x,-cam.y*T);
+ ctx.save();ctx.translate(W/2+sx+kick.x,camCY()+sy+kick.y);ctx.scale(z,z);ctx.translate(-cam.x,-cam.y*T);
  // 뒤쪽으로 떨어지는 캐릭터는 경기장 뒤에
  for(const f of F)if(f.state==='fall'&&f.y<0)drawFighter(f);
  drawArena();drawGroundFx();
@@ -1110,7 +1114,7 @@ function draw(rdt){
 // 화면 밖으로 나간 캐릭터: 가장자리에 얼굴 + % 말풍선, 화살표로 방향 표시
 function drawOffscreen(z){if(!F.length||state==='menu')return;const top=10,bot=H-100,M=34;
  for(const f of F){if(f.state!=='alive'&&!(f.state==='fall'&&f.fallT<.6))continue;
-  const px=W/2+kick.x+(SX(f.x)-cam.x)*z,py=H/2+30+kick.y+(SY(f.y,fz(f)+f.r)-cam.y*T)*z;
+  const px=W/2+kick.x+(SX(f.x)-cam.x)*z,py=camCY()+kick.y+(SY(f.y,fz(f)+f.r)-cam.y*T)*z;
   if(px>-8&&px<W+8&&py>top-8&&py<bot+30)continue;
   const cx=Math.max(M,Math.min(W-M,px)),cy=Math.max(top+M,Math.min(bot-M,py)),a=Math.atan2(py-cy,px-cx),R=26;
   ctx.save();ctx.translate(cx,cy);
