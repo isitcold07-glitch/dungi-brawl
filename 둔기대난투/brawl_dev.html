@@ -552,7 +552,10 @@ function hurt(f,o){if(f.remote)netSendHit(o);else applyHit(f,o);}
 function recoil(f,kx,ky,lag){if(f.remote)netSendHit({k:'r',kx,ky,lag});else{f.kx=kx;f.ky=ky;f.lag=Math.max(f.lag,lag);}}
 function hitF(att,def,o){if(def.state!=='alive'||def.rinv>0)return 'none';
  // 온라인 상대: 맞았는지는 내가 판정해 보내고, 막기·회피는 상대 화면에서 판정한다. 여기서는 연출용 예측만
- if(def.remote){netSendHit(o);if(def.inv>0||(def.wp==='pan'&&!o.charge&&def.jgT>0&&def.guardCd<=0))return 'none';att.st.dealt+=o.pct;return 'hit';}
+ if(def.remote){netSendHit(o);if(def.inv>0||(def.wp==='pan'&&!o.charge&&def.jgT>0&&def.guardCd<=0))return 'none';att.st.dealt+=o.pct;
+  if(!(def.wp==='pan'&&def.charging&&def.chargeT>.15)){const v=o.kb*(1+(def.pct+o.pct)/KB_DIV);def.kx=o.ux*v;def.ky=o.uy*v;def.pct=Math.min(999,def.pct+o.pct);def.flash=.12;def.sq=1;
+   NET.predT=time+Math.min(.45,NET.rtt/1000+.12);addText(def.x,def.y,def.r*2+14,'+'+o.pct+'%',pctCol(def.pct),o.pct>=10?24:17,.8);}
+  return 'hit';}
  if(def.inv>0){if(time-def.dashAt<=JD_WIN&&def.jdCd<=0){justDodge(def,att);return 'jd';}return 'none';}
  if(def.wp==='pan'){const tw=Math.atan2(att.y-def.y,att.x-def.x);
   if(!o.charge&&def.jgT>0&&def.guardCd<=0){justGuard(def,att);return 'guard';}
@@ -916,6 +919,7 @@ function drawHUD(){const cw=Math.min(240,(W-36)/2),ch=74,y=H-ch-12;ctx.textBasel
   ctx.font=`900 ${Math.min(52,W/10)}px system-ui`;ctx.lineWidth=6;ctx.strokeStyle='#3a0008';ctx.strokeText(banner.t,0,0);ctx.fillStyle='#ffd43b';ctx.fillText(banner.t,0,0);
   if(banner.sub){ctx.font=`800 ${Math.min(22,W/20)}px system-ui`;ctx.lineWidth=4;ctx.strokeText(banner.sub,0,Math.min(44,W/12));ctx.fillStyle='#fff';ctx.fillText(banner.sub,0,Math.min(44,W/12));}
   ctx.restore();ctx.globalAlpha=1;}
+ if(NET.on&&NET.rtt){ctx.textAlign='left';ctx.font='bold 12px system-ui';ctx.fillStyle=NET.rtt<120?'#69db7c':NET.rtt<250?'#ffd43b':'#ff6b6b';ctx.fillText('핑 '+Math.round(NET.rtt)+'ms',14,18);}
  if(muted){ctx.textAlign='right';ctx.font='12px system-ui';ctx.fillStyle='rgba(255,255,255,.5)';ctx.fillText('🔇',W-14,18);}}
 
 /* ================= 온라인 1:1 (아티팩트 room) =================
@@ -923,7 +927,7 @@ function drawHUD(){const cw=Math.min(240,(W-36)/2),ch=74,y=H-ch-12;ctx.textBasel
  때린 쪽이 맞았는지 판정해 presence의 hits 목록에 번호를 붙여 싣고, 맞는 쪽이 새 번호를 보면
  자기 실제 상태로 막기·저스트 회피·가드를 판정해 넉백을 적용한다. 목숨은 각자 상대가 보낸 값이 줄면 장외 연출·점수 처리. */
 let ROOM=null,ROOM_ST='wait'; // wait → ok / none
-const NET={on:false,sub:null,code:'',gen:0,rdy:0,hitN:0,hits:[],seen:0,oppPeer:null,oppGoneT:0,prevStocks:3,lastP:null,tgt:null,side:0,msg:'',joining:false};
+const NET={rtt:0,predT:0,vel:{x:0,y:0},lp:null,recvT:0,oppTm:null,on:false,sub:null,code:'',gen:0,rdy:0,hitN:0,hits:[],seen:0,oppPeer:null,oppGoneT:0,prevStocks:3,lastP:null,tgt:null,side:0,msg:'',joining:false};
 (async()=>{try{ROOM=window.claude&&window.claude.use?await window.claude.use('room'):null;}catch(e){ROOM=null;}ROOM_ST=ROOM?'ok':'none';if(state==='online')renderOnline();})();
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const r1=v=>Math.round(v*10)/10,r2=v=>Math.round(v*100)/100;
@@ -949,11 +953,13 @@ function packF(f){return{x:r1(f.x),y:r1(f.y),z:r1(f.z),fa:r2(f.face),kx:r1(f.kx)
  sn:r2(Math.max(0,f.stun)),ri:r2(Math.max(0,f.rinv)),iv:r2(Math.max(0,f.inv)),dt:r2(Math.max(0,f.dashT)),dvx:Math.round(f.dvx),dvy:Math.round(f.dvy),ch:f.charging?r2(f.chargeT):-1,
  sw:f.sw?[r2(f.sw.a),f.sw.dir,r2(f.sw.t),r2(f.sw.dur),f.sw.both?1:0,f.sw.cmb||0,f.sw.down?1:0,f.sw.spin?1:0]:0,sp:f.slamPend?[r2(f.slamPend.t),r2(f.slamPend.k)]:0,spn:f.spinA?[r2(f.spinA.t),r2(f.spinA.dur),r2(f.spinA.k)]:0,
  jg:r2(Math.max(0,f.jgT)),gc:r2(Math.max(0,f.guardCd)),jb:r2(Math.max(0,f.jdBuff)),fl:r2(Math.max(0,f.flatT-time)),sa:r2(Math.max(0,f.slamAnim)),sA:r2(f.slamA),w:r1(f.walk||0),mv:r2(f.mvx),
- st:[Math.round(f.st.dealt),f.st.ko,f.st.jd,f.st.guard]};}
+ st:[Math.round(f.st.dealt),f.st.ko,f.st.jd,f.st.guard],v:[Math.round(NET.vel.x),Math.round(NET.vel.y)]};}
 // 상대 presence → 화면 속 상대 캐릭터 (위치는 부드럽게 따라가고 나머지는 그대로)
 function unpackF(f,g){const n=(v,d=0)=>Number.isFinite(+v)?+v:d;
- NET.tgt={x:n(g.x),y:n(g.y),z:n(g.z)};if(Math.hypot(f.x-NET.tgt.x,f.y-NET.tgt.y)>220){f.x=NET.tgt.x;f.y=NET.tgt.y;}
- Object.assign(f,{face:n(g.fa),kx:n(g.kx),ky:n(g.ky),pct:Math.max(0,n(g.pc)),stun:n(g.sn),rinv:n(g.ri),inv:n(g.iv),dashT:n(g.dt),dvx:n(g.dvx),dvy:n(g.dvy),
+ const pred=time<NET.predT,v=Array.isArray(g.v)?g.v:[0,0];NET.recvT=rtime;
+ if(!pred){NET.tgt={x:n(g.x),y:n(g.y),z:n(g.z),vx:Math.max(-1500,Math.min(1500,n(v[0]))),vy:Math.max(-1500,Math.min(1500,n(v[1])))};if(Math.hypot(f.x-NET.tgt.x,f.y-NET.tgt.y)>260){f.x=NET.tgt.x;f.y=NET.tgt.y;}
+  f.kx=n(g.kx);f.ky=n(g.ky);f.pct=Math.max(0,n(g.pc));}
+ Object.assign(f,{face:n(g.fa),stun:n(g.sn),rinv:n(g.ri),inv:n(g.iv),dashT:n(g.dt),dvx:n(g.dvx),dvy:n(g.dvy),
   charging:n(g.ch,-1)>=0,chargeT:Math.max(0,n(g.ch)),jgT:n(g.jg),guardCd:n(g.gc),jdBuff:n(g.jb),flatT:time+n(g.fl),slamAnim:n(g.sa),slamA:n(g.sA),walk:n(g.w),mvx:n(g.mv)});
  const sw=Array.isArray(g.sw)?g.sw:null;f.sw=sw?{a:n(sw[0]),dir:n(sw[1],1),t:n(sw[2]),dur:Math.max(.05,n(sw[3],.3)),both:!!sw[4],cmb:n(sw[5]),down:!!sw[6],spin:!!sw[7],hit:true}:null;
  f.slamPend=Array.isArray(g.sp)?{t:n(g.sp[0]),k:n(g.sp[1])}:null;f.spinA=Array.isArray(g.spn)?{t:n(g.spn[0]),dur:Math.max(.1,n(g.spn[1],1)),k:n(g.spn[2]),tick:1,a:f.face}:null;
@@ -965,14 +971,20 @@ function unpackF(f,g){const n=(v,d=0)=>Number.isFinite(+v)?+v:d;
 function netPuppet(f,dt){f.flash-=dt;f.sq=Math.max(0,f.sq-dt*4);for(const g of f.trail)g.a-=dt*3.5;f.trail=f.trail.filter(g=>g.a>0);
  if(f.sw){f.sw.t=Math.min(1,f.sw.t+dt/f.sw.dur);}if(f.slamPend)f.slamPend.t+=dt;if(f.spinA)f.spinA.t+=dt;
  if(f.state==='fall'){f.fallT+=dt;f.z-=dt*(300+f.fallT*1100);f.x+=f.kx*dt*.5;f.y+=f.ky*dt*.5;return;}
- if(NET.tgt){const k=Math.min(1,dt*18);f.x+=(NET.tgt.x-f.x)*k;f.y+=(NET.tgt.y-f.y)*k;f.z+=(NET.tgt.z-f.z)*k;}
+ if(time<NET.predT){f.x+=f.kx*dt;f.y+=f.ky*dt;const fr=Math.exp(-FRIC*dt);f.kx*=fr;f.ky*=fr;}
+ else if(NET.tgt){const ahead=Math.min(.25,NET.rtt/2000+(rtime-NET.recvT)),tx=NET.tgt.x+NET.tgt.vx*ahead,ty=NET.tgt.y+NET.tgt.vy*ahead,k=Math.min(1,dt*22);
+  f.x+=(tx-f.x)*k;f.y+=(ty-f.y)*k;f.z+=(NET.tgt.z-f.z)*k;}
  if(f.dashT>0&&(f.trailT-=dt)<=0){f.trailT=.035;f.trail.push({x:f.x,y:f.y,a:1,da:Math.atan2(f.dvy*T,f.dvx)});if(f.trail.length>4)f.trail.shift();}}
 // 매 프레임 (루프): 내 상태 보내기, 상대 상태·타격 받기, 대기실·재대결 시작
 function netTick(){if(!NET.sub)return;const opp=findOpp();
  if(opp&&opp.peer!==NET.oppPeer){NET.oppPeer=opp.peer;NET.seen=Math.max(0,...((opp.presence.hits||[]).map(h=>+h.n||0)));}
  const inG=NET.on&&(state==='play'||state==='count'||state==='end'||state==='pause');
  NET.hits=NET.hits.filter(h=>rtime-h.t<1.5);
- const pres={pl:1,nm:LOOK.name,col:LOOK.col,hat:LOOK.hat,eye:LOOK.eye,wlv:LOOK.wlv,wp:CFG.wp,rdy:NET.rdy,gen:NET.gen,
+ const me0=F[0];if(me0&&NET.lp){const d=Math.max(1/120,rtime-NET.lp.t);NET.vel.x=NET.vel.x*.6+(me0.x-NET.lp.x)/d*.4;NET.vel.y=NET.vel.y*.6+(me0.y-NET.lp.y)/d*.4;}if(me0)NET.lp={x:me0.x,y:me0.y,t:rtime};
+ // 핑: 내 시각(tm)을 보내고, 상대가 받은 내 시각과 들고 있던 시간(ec)을 돌려주면 왕복 시간을 잰다
+ const nowMs=Math.round(performance.now());if(opp&&Array.isArray(opp.presence.ec)){const e=opp.presence.ec,r=nowMs-(+e[0])-(+e[1]);if(r>0&&r<5000&&e[0]!==NET.lastEc){NET.lastEc=e[0];NET.rtt=NET.rtt?NET.rtt*.8+r*.2:r;}}
+ if(opp&&Number.isFinite(+opp.presence.tm)&&opp.presence.tm!==(NET.oppTm&&NET.oppTm.tm))NET.oppTm={tm:+opp.presence.tm,at:nowMs};
+ const pres={tm:nowMs,ec:NET.oppTm?[NET.oppTm.tm,nowMs-NET.oppTm.at]:null,pl:1,nm:LOOK.name,col:LOOK.col,hat:LOOK.hat,eye:LOOK.eye,wlv:LOOK.wlv,wp:CFG.wp,rdy:NET.rdy,gen:NET.gen,
   rd:inG?MATCH.round:0,g:inG&&F[0]?packF(F[0]):null,hits:NET.hits.map(({t,...h})=>h)};
  NET.sub.presence(pres).then(()=>{NET.pOk=(NET.pOk||0)+1;},e=>{NET.pErr=(e&&e.code||'?')+(e&&e.message?': '+String(e.message).slice(0,80):'');});
  if(state==='online'||state==='over')renderOnlineLive(opp);
@@ -990,7 +1002,7 @@ function startOnline(opp){const g=opp.presence;NET.on=true;NET.msg='';NET.side=m
  matchT=0;audio();startRound();}
 // 방 코드별 공간: 이름 붙은 방(join)은 같은 계정의 두 창이 서로 안 보이는 경우가 있어,
 // 게임을 연 모두가 있는 기본 방(lobby)에서 presence의 rm(방 코드)이 같은 사람끼리만 짝짓는다
-const NET_KEYS=['pl','nm','col','hat','eye','wlv','wp','rdy','gen','rd','g','hits','rm'];
+const NET_KEYS=['tm','ec','pl','nm','col','hat','eye','wlv','wp','rdy','gen','rd','g','hits','rm'];
 function codeRoom(code){const mine=p=>p.sameTab||(p.presence&&p.presence.rm===code);
  return{name:code,peers:()=>ROOM.peers().filter(mine),connected:()=>ROOM.connected(),
   presence:o=>ROOM.presence(Object.assign({},o,{rm:code})),
@@ -1009,7 +1021,7 @@ function leaveOnline(){if(NET.sub){NET.sub.leave().catch(()=>{});}NET.sub=null;N
 function openOnline(){state='online';NET.msg='';renderOnline();show('online');}
 function renderOnline(){const m=$('onMsg'),join=$('onJoin'),wait=$('onWait');
  if(ROOM_ST==='wait'){m.textContent='온라인 연결 확인 중...';join.style.display='none';wait.style.display='none';return;}
- if(!ROOM){m.innerHTML='온라인 대결은 <b>Claude에 로그인</b>하고 <b>이 게임에 초대받은 사람</b>만 할 수 있어요.<br>지금 화면에서는 봇 대결만 할 수 있어요.';join.style.display='none';wait.style.display='none';return;}
+ if(!ROOM){m.innerHTML='온라인 대결은 <b>Claude에 로그인</b>하고 <b>이 게임에 이메일로 초대받은 사람</b>만 할 수 있어요.<br>게임 주인이 공유 설정의 일반 액세스를 <b>\'링크가 있는 모든 사용자\'</b>로 해 두면 초대받아도 안 돼요 → <b>제한됨</b>으로 바꿔 주세요.<br>지금 화면에서는 봇 대결만 할 수 있어요.';join.style.display='none';wait.style.display='none';return;}
  m.textContent=NET.msg||(NET.sub?'':'방을 만들고 코드를 친구에게 알려 주세요. 친구는 같은 게임 링크에서 코드를 입력하면 돼요.');
  join.style.display=NET.sub?'none':'block';wait.style.display=NET.sub?'block':'none';
  if(NET.sub){$('codeShow').textContent=NET.code.toUpperCase();$('myWp').textContent=WD[CFG.wp].ic+' '+WD[CFG.wp].nm;}
