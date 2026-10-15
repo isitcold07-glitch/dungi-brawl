@@ -62,7 +62,7 @@ p.sub{opacity:.85;margin-bottom:14px;line-height:1.6}
 
 <div id="menu" class="ov show">
   <h1>둔기 남자<small>대난투</small></h1>
-  <p class="sub">때려서 %를 쌓고, 경기장 밖으로 날려라! 목숨 3개</p>
+  <p class="sub">때려서 %를 쌓고, 경기장 밖으로 날려라! 목숨 3개 · 3판 2선승</p>
   <div class="mebox"><canvas id="meCv" width="240" height="200"></canvas><div><div class="nm" id="meName"></div><button class="btn sm gray" id="lookBtn">🎨 꾸미기</button></div></div>
   <div class="wsel">내 무기</div>
   <div class="wcards" id="wcards"></div>
@@ -70,6 +70,7 @@ p.sub{opacity:.85;margin-bottom:14px;line-height:1.6}
   <div class="wsel">상대 (봇)</div>
   <div class="dsel" id="bsel"></div>
   <div class="dsel" id="dsel"></div>
+  <div class="dsel" id="bosel"></div>
   <button class="btn" id="startBtn">대결 시작</button>
   <div class="ctrl">이동: WASD / 방향키 · 조준: 마우스 (마우스 없으면 상대 자동 조준)<br>
   <b>클릭</b> 또는 <b>J</b> = 휘두르기 · <b>꾹 눌렀다 떼기</b> = 차지 공격 · 대시: Space / Shift<br>
@@ -391,7 +392,7 @@ const EYES=[['norm','보통'],['angry','부리부리'],['sleepy','졸린 눈'],[
 const WLV=[[0,'기본'],[2,'쇠테'],[4,'강철'],[6,'황금'],[8,'전설']];
 let LOOK={name:'둔기 남자',col:'#ff8c2b',hat:'horn',eye:'norm',wlv:0};
 try{const s=JSON.parse(localStorage.getItem('brawlLook'));if(s)LOOK=Object.assign(LOOK,s);}catch(e){}
-let CFG={wp:'hammer',bot:'random',lv:'normal'};
+let CFG={wp:'hammer',bot:'random',lv:'normal',bo:3};
 try{const s=JSON.parse(localStorage.getItem('brawlCfg'));if(s)CFG=Object.assign(CFG,s);}catch(e){}
 const saveLook=()=>{try{localStorage.setItem('brawlLook',JSON.stringify(LOOK));}catch(e){}};
 const saveCfg=()=>{try{localStorage.setItem('brawlCfg',JSON.stringify(CFG));}catch(e){}};
@@ -474,11 +475,17 @@ function mkF(id,wp,look,bot){const D=WD[wp];return{id,wp,bot,name:look.name||'�
 const other=f=>F[1-f.id];
 const canAct=f=>f.state==='alive'&&f.stun<=0&&f.lag<=0&&!f.slamPend&&!f.spinA;
 
-function start(){audio();hideAll();
+// MATCH: 여러 판(라운드)에 걸친 정보. 판마다 캐릭터는 새로 만들고 기록(st)은 이어진다
+let MATCH={bo:1,w:[0,0],round:1,need:1,over:false,st:[],looks:[],wps:[]};
+const newSt=()=>({dealt:0,ko:0,jd:0,guard:0});
+function start(){audio();
  const bw=CFG.bot==='random'?WORD[Math.random()*4|0]:CFG.bot;
- F=[mkF(0,CFG.wp,LOOK,false),mkF(1,bw,botLook(),true)];
+ MATCH={bo:CFG.bo||1,w:[0,0],round:1,need:Math.ceil((CFG.bo||1)/2),over:false,st:[newSt(),newSt()],looks:[LOOK,botLook()],wps:[CFG.wp,bw],bots:[false,true]};
+ matchT=0;startRound();}
+function startRound(){hideAll();
+ F=[0,1].map(i=>{const f=mkF(i,MATCH.wps[i],MATCH.looks[i],MATCH.bots[i]);f.st=MATCH.st[i];return f;});
  F[0].x=-170;F[1].x=170;F[1].face=Math.PI;F[1].inp.aim=Math.PI;
- parts=[];texts=[];fx=[];cracks=[];time=0;matchT=0;shake=freeze=slow=flash=zp=0;banner=null;state='count';countT=3;lastCount=4;winner=null;
+ parts=[];texts=[];fx=[];cracks=[];time=0;shake=freeze=slow=flash=zp=0;banner=null;state='count';countT=3;lastCount=4;winner=null;
  cam.x=0;cam.y=0;
  const tch=isTouch?'flex':'none';$('atkBtn').style.display=tch;$('dashBtn').style.display=tch;$('atkBtn').textContent=WD[CFG.wp].ic.slice(0,2);}
 function toMenu(){state='menu';F=[];pAtk=false;$('atkBtn').style.display='none';$('dashBtn').style.display='none';renderMenu();show('menu');}
@@ -494,7 +501,9 @@ function ko(f){const o=other(f);f.stocks--;o.st.ko++;const a=Math.atan2(f.y,f.x)
  fx.push({t:'ko',x:Math.cos(a)*AR,y:Math.sin(a)*AR,a,life:1.3,ml:1.3,c:f.col});
  for(let i=0;i<40;i++){const q=a+rand(-.7,.7),s=rand(300,1100);parts.push({x:Math.cos(a)*AR,y:Math.sin(a)*AR,z:10,vx:Math.cos(q)*s,vy:Math.sin(q)*s,life:rand(.4,.8),ml:.8,c:i%3?f.col:'#ffffff',s:rand(3,7),streak:1});}
  shake=Math.max(shake,30);flash=Math.max(flash,.35);freeze=Math.max(freeze,.12);sfx('ko');sfx('boom');
- if(f.stocks<=0){f.state='dead';winner=o;state='end';endT=2.2;slow=Math.max(slow,1.1);zp=Math.max(zp,.12);banner={t:'게임 끝!',sub:o.name+' 승리!',life:3};}
+ if(f.stocks<=0){f.state='dead';winner=o;state='end';endT=2.4;slow=Math.max(slow,1.1);zp=Math.max(zp,.12);
+  MATCH.w[o.id]++;MATCH.over=MATCH.w[o.id]>=MATCH.need;const sc=MATCH.bo>1?' ('+MATCH.w[0]+' : '+MATCH.w[1]+')':'';
+  banner=MATCH.over?{t:'게임 끝!',sub:o.name+' 승리!'+sc,life:3}:{t:MATCH.round+'라운드 끝!',sub:o.name+' 승리'+sc,life:3};}
  else{f.state='out';f.respT=1.2;banner={t:f.name+' 장외!',sub:'남은 목숨 '+f.stocks,life:1.6};}}
 function respawn(f){const o=other(f),a=o.state==='alive'?Math.atan2(o.y,o.x)+Math.PI:rand(0,TAU),rr=o.state==='alive'?160:0;
  Object.assign(f,{state:'alive',x:Math.cos(a)*rr,y:Math.sin(a)*rr,z:380,vz:0,kx:0,ky:0,pct:0,stun:0,lag:0,rinv:2.2,charging:false,sw:null,spinA:null,slamPend:null,dashN:f.dashMax,dashCd:0,flatT:0});
@@ -702,6 +711,7 @@ function renderMenu(){const box=$('wcards');box.innerHTML='';
  $('wInfo').innerHTML='<b>'+WD[CFG.wp].ic+' '+WD[CFG.wp].nm+'</b> — '+WD[CFG.wp].info;
  const bs=$('bsel');bs.innerHTML='';for(const k of[...WORD,'random']){const b=document.createElement('button');b.className=CFG.bot===k?'on':'';b.innerHTML=k==='random'?'🎲 랜덤':WD[k].ic+' '+WD[k].nm;b.onclick=()=>{CFG.bot=k;saveCfg();renderMenu();};bs.appendChild(b);}
  const ds=$('dsel');ds.innerHTML='';for(const k in BOTD){const b=document.createElement('button');b.className=CFG.lv===k?'on':'';b.innerHTML=BOTD[k].nm+'<small>'+BOTD[k].sub+'</small>';b.onclick=()=>{CFG.lv=k;saveCfg();renderMenu();};ds.appendChild(b);}
+ const bo=$('bosel');bo.innerHTML='';for(const [k,nm,sub] of[[1,'단판','목숨 3개 한 판'],[3,'3판 2선승','먼저 2판 이기면 승리']]){const b=document.createElement('button');b.className=CFG.bo===k?'on':'';b.innerHTML=nm+'<small>'+sub+'</small>';b.onclick=()=>{CFG.bo=k;saveCfg();renderMenu();};bo.appendChild(b);}
  $('meName').textContent=LOOK.name||'둔기 남자';}
 function renderLook(){const mk=(id,list,cur,set,sw)=>{const box=$(id);box.innerHTML='';for(const [v,lb] of list){const b=document.createElement('button');b.className=(sw?'sw':'')+(cur===v?' on':'');if(sw){b.style.background=v;b.title=v;}else b.textContent=lb;b.onclick=()=>{set(v);saveLook();renderLook();};box.appendChild(b);}};
  mk('oCol',COLS.map(c=>[c,'']),LOOK.col,v=>LOOK.col=v,true);
@@ -735,9 +745,9 @@ function update(dt){time+=dt;
  for(const f of fx)f.life-=dt;fx=fx.filter(f=>f.life>0);
  for(const c of cracks)c.life-=dt;cracks=cracks.filter(c=>c.life>0);
  if(banner)banner.life-=dt;}
-function endTick(rdt){if(state!=='end')return;endT-=rdt;if(endT<=0)showOver();}
-function showOver(){state='over';pAtk=false;$('atkBtn').style.display='none';$('dashBtn').style.display='none';const me=F[0],bt=F[1],win=winner===me;
- $('ovT').textContent=win?'승리!':'패배...';$('ovS').textContent=win?bt.name+'을(를) 날려버렸다!':bt.name+'에게 날아갔다...';
+function endTick(rdt){if(state!=='end')return;endT-=rdt;if(endT<=0){if(MATCH.over)showOver();else{MATCH.round++;startRound();}}}
+function showOver(){state='over';pAtk=false;$('atkBtn').style.display='none';$('dashBtn').style.display='none';const me=F[0],bt=F[1],win=MATCH.w[0]>MATCH.w[1];
+ $('ovT').textContent=win?'승리!':'패배...';$('ovS').textContent=(MATCH.bo>1?MATCH.w[0]+' : '+MATCH.w[1]+' · ':'')+(win?bt.name+'을(를) 날려버렸다!':bt.name+'에게 날아갔다...');
  const box=f=>'<div><b style="color:'+f.tc+'">'+(f.bot?'':'▼ ')+f.name+' '+WD[f.wp].ic+'</b>남은 목숨: '+'●'.repeat(Math.max(0,f.stocks))+'○'.repeat(3-Math.max(0,f.stocks))+'<br>준 피해: '+Math.round(f.st.dealt)+'%<br>날린 횟수: '+f.st.ko+'<br>저스트 회피: '+f.st.jd+(f.wp==='pan'?'<br>저스트 가드: '+f.st.guard:'')+'</div>';
  $('ovStats').innerHTML=box(me)+box(bt)+'<div style="min-width:0;align-self:center;opacity:.8">시간 '+Math.floor(matchT/60)+':'+String(Math.floor(matchT%60)).padStart(2,'0')+'</div>';
  show('over');}
@@ -836,6 +846,8 @@ function drawHUD(){const cw=Math.min(240,(W-36)/2),ch=74,y=H-ch-12;ctx.textBasel
   ctx.font='14px serif';ctx.fillStyle='#fff';ctx.fillText(WD[f.wp].ic,x+10,y+58);
   // 목숨
   for(let s=0;s<3;s++){ctx.beginPath();ctx.arc(x+52+s*15,y+34,5.5,0,TAU);ctx.fillStyle=s<f.stocks?f.col:'rgba(255,255,255,.12)';ctx.fill();ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=1.5;ctx.stroke();}
+  // 이긴 라운드
+  if(MATCH.bo>1)for(let s=0;s<MATCH.need;s++){const px=x+cw-14-s*16,py=y+14;star5(px,py,6.5,s<MATCH.w[i]?'#ffd43b':'rgba(255,255,255,.15)');}
   // 피해 %
   ctx.textAlign='right';const txt=f.state==='dead'?'KO':f.state==='out'||f.state==='fall'?'...':Math.round(f.pct)+'%';
   ctx.font=`900 ${Math.min(40,cw*.19)}px system-ui`;ctx.lineWidth=5;ctx.strokeStyle='#000';const px=x+cw-10+(Math.random()-.5)*hit,py=y+ch/2+6+(Math.random()-.5)*hit;
@@ -849,6 +861,7 @@ function drawHUD(){const cw=Math.min(240,(W-36)/2),ch=74,y=H-ch-12;ctx.textBasel
    if(o.n!=null){ctx.font='bold 12px system-ui';ctx.fillStyle=o.c;ctx.fillText('×'+o.n,cx+r-2,cy-r+4);}
    ctx.font='bold 10px system-ui';ctx.fillStyle='rgba(255,255,255,.6)';ctx.fillText(o.lb,cx,cy+r+9);});}
  // 카운트다운
+ if(state==='count'&&MATCH.bo>1){const last=MATCH.w[0]===MATCH.need-1&&MATCH.w[1]===MATCH.need-1;ctx.textAlign='center';ctx.font='900 '+Math.min(40,W/12)+'px system-ui';ctx.lineWidth=6;ctx.strokeStyle='#3a0008';const t=last?'마지막 라운드!':MATCH.round+'라운드';ctx.strokeText(t,W/2,H*.22);ctx.fillStyle=last?'#ff6b6b':'#fff';ctx.fillText(t,W/2,H*.22);}
  if(state==='count'){const n=Math.ceil(countT),k=n-countT;ctx.save();ctx.translate(W/2,H*.4);ctx.scale(1+k*.6,1+k*.6);ctx.globalAlpha=1-k*.7;ctx.textAlign='center';ctx.font='900 110px system-ui';ctx.lineWidth=10;ctx.strokeStyle='#3a0008';ctx.strokeText(n,0,0);ctx.fillStyle='#ffd43b';ctx.fillText(n,0,0);ctx.restore();ctx.globalAlpha=1;}
  if(banner&&banner.life>0){ctx.globalAlpha=Math.min(1,banner.life*1.5);const s=1+Math.max(0,banner.life-1.1)*.6;ctx.save();ctx.translate(W/2,H*.26);ctx.scale(s,s);ctx.textAlign='center';
   ctx.font=`900 ${Math.min(52,W/10)}px system-ui`;ctx.lineWidth=6;ctx.strokeStyle='#3a0008';ctx.strokeText(banner.t,0,0);ctx.fillStyle='#ffd43b';ctx.fillText(banner.t,0,0);
