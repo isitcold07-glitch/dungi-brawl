@@ -76,6 +76,7 @@ p.sub{opacity:.85;margin-bottom:14px;line-height:1.6}
 #oppInfo{margin:8px 0 6px;font-size:16px;min-height:24px}#ovNet{min-height:20px;margin-bottom:8px;color:#ffd43b;font-weight:800}
 #ultBtn{right:30px;bottom:212px;width:64px;height:64px;background:rgba(255,212,59,.12);border:2px solid #ffd43b66;font-size:13px;opacity:.45}
 #ultBtn.full{opacity:1;background:rgba(255,212,59,.35);border-color:#ffd43b;box-shadow:0 0 18px #ffd43b}
+#grabBtn{right:194px;bottom:116px;width:56px;height:56px;background:rgba(255,216,168,.15);border:2px solid #ffd8a899;font-size:22px}
 #grdBtn{right:126px;bottom:176px;width:58px;height:58px;background:rgba(116,192,252,.15);border:2px solid #74c0fc99;font-size:22px}
 #dashBtn{right:124px;bottom:104px;width:62px;height:62px;background:rgba(122,231,255,.15);border:2px solid #7ae7ff99;font-size:14px}
 @media (max-height:520px){h1{font-size:clamp(28px,7vh,48px)}h2{font-size:24px;margin-bottom:6px}.stats{gap:10px;margin-bottom:10px;font-size:13px;line-height:1.5}.stats div{min-width:150px;padding:6px 12px}.stats b{font-size:15px}.btn{font-size:16px;padding:9px 26px}#online .code{font-size:34px;padding:2px 16px;margin:2px 0 6px}}
@@ -87,6 +88,7 @@ p.sub{opacity:.85;margin-bottom:14px;line-height:1.6}
 <div id="dashBtn" class="tbtn">대시</div>
 <div id="ultBtn" class="tbtn">궁극기</div>
 <div id="grdBtn" class="tbtn">🛡️</div>
+<div id="grabBtn" class="tbtn">✊</div>
 
 <div id="menu" class="ov show">
   <h1>흉기 인간<small>영혼의 맞짱</small></h1>
@@ -108,7 +110,7 @@ p.sub{opacity:.85;margin-bottom:14px;line-height:1.6}
   상대 공격이 닿기 직전에 대시 = <b>저스트 회피</b>(다음 한 방 강화) · 일시정지: Esc · 소리: M · 브금: B<br>
   <b>E</b> = 궁극기 (때리거나 맞으면 게이지가 차요)<br>
   <b>Q</b> 또는 <b>오른쪽 클릭</b>(꾹) = 가드 · 막기 직전에 누르면 <b>패링</b> · 가드 중 클릭 또는 <b>F</b> = <b>잡기</b>(가드를 뚫고 던진다, 가장자리의 상대는 <b>벼랑 잡기</b>로 확정 장외! 빗나가면 내가 미끄러짐)<br>
-  모바일: 화면 드래그로 이동, 🔨 버튼(누르고 있으면 차지), 대시·궁극기 버튼, 🛡️ 버튼(꾹) 가드 · 🛡️ 누른 채 🔨 = 잡기</div>
+  모바일: 화면 드래그로 이동, 🔨 버튼(누르고 있으면 차지), 대시·궁극기 버튼, 🛡️ 버튼(꾹) 가드 · ✊ 버튼 = 잡기</div>
 </div>
 
 <div id="look" class="ov">
@@ -689,9 +691,9 @@ function startRound(){hideAll();
  for(const f of F)f.ult=MATCH.ult?MATCH.ult[f.id]:0;
  items=[];itemT=rand(8,12);drops=[];proj=[];cutin=null;parts=[];texts=[];fx=[];cracks=[];time=0;shake=freeze=slow=flash=zp=0;banner=null;state='count';countT=3;lastCount=4;winner=null;
  cam.x=0;cam.y=0;
- const tch=isTouch?'flex':'none';$('atkBtn').style.display=tch;$('dashBtn').style.display=tch;$('ultBtn').style.display=tch;$('grdBtn').style.display=tch;$('atkBtn').textContent=WD[CFG.wp].ic.slice(0,2);}
+ const tch=isTouch?'flex':'none';$('atkBtn').style.display=tch;$('dashBtn').style.display=tch;$('ultBtn').style.display=tch;$('grdBtn').style.display=tch;$('grabBtn').style.display=tch;$('atkBtn').textContent=WD[CFG.wp].ic.slice(0,2);}
 function retry(){if(NET.sub){if(NET.rdy!==NET.gen+1&&findOpp())toggleReady();}else start();}
-function toMenu(){if(NET.sub)leaveOnline();NET.on=false;state='menu';F=[];pAtk=false;$('atkBtn').style.display='none';$('dashBtn').style.display='none';$('ultBtn').style.display='none';$('grdBtn').style.display='none';tGuard=false;renderMenu();show('menu');}
+function toMenu(){if(NET.sub)leaveOnline();NET.on=false;state='menu';F=[];pAtk=false;$('atkBtn').style.display='none';$('dashBtn').style.display='none';$('ultBtn').style.display='none';$('grdBtn').style.display='none';$('grabBtn').style.display='none';tGuard=false;renderMenu();show('menu');}
 function setPause(p){if(NET.on){if(p){show('pause');$('pause').querySelector('h2').textContent='메뉴 (게임은 계속돼요)';}else hideAll();return;}
  $('pause').querySelector('h2').textContent='일시정지';if(p){state='pause';pAtk=false;show('pause');}else{hideAll();state='play';last=performance.now();}}
 
@@ -1081,13 +1083,14 @@ addEventListener('mousemove',e=>{if(!(e.buttons&2))mGuard=false;if(mAtk&&!(e.but
 addEventListener('mouseleave',()=>{mGuard=false;});document.addEventListener('visibilitychange',()=>{if(document.hidden){mGuard=false;tGuard=false;pAtk=false;mAtk=false;}});
 // 오른쪽 버튼 마우스 제스처(웨일 등)나 실수로 누른 뒤로 가기 때문에 게임이 꺼지지 않게: 게임 중엔 뒤로 가기를 한 번 막는다
 try{history.pushState({brawl:1},'',location.href);addEventListener('popstate',()=>{if(inGame()||state==='online'||state==='over'){history.pushState({brawl:1},'',location.href);if(inGame())banner={t:'뒤로 가기는 막아 뒀어요',sub:'나가려면 Esc → 처음으로',life:1.4};}else history.back();});}catch(e){}
-cv.addEventListener('touchstart',e=>{audio();if(!isTouch){isTouch=true;useMouse=false;if(inGame()){$('atkBtn').style.display='flex';$('dashBtn').style.display='flex';$('ultBtn').style.display='flex';$('grdBtn').style.display='flex';}}
+cv.addEventListener('touchstart',e=>{audio();if(!isTouch){isTouch=true;useMouse=false;if(inGame()){$('atkBtn').style.display='flex';$('dashBtn').style.display='flex';$('ultBtn').style.display='flex';$('grdBtn').style.display='flex';$('grabBtn').style.display='flex';}}
  for(const t of e.changedTouches){if(!joy.on)joy={on:true,id:t.identifier,sx:t.clientX,sy:t.clientY,x:t.clientX,y:t.clientY};}e.preventDefault();},{passive:false});
 cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches)if(t.identifier===joy.id){joy.x=t.clientX;joy.y=t.clientY;}e.preventDefault();},{passive:false});
 const tEnd=e=>{for(const t of e.changedTouches)if(t.identifier===joy.id){joy.on=false;joy.id=null;}};
 cv.addEventListener('touchend',tEnd);cv.addEventListener('touchcancel',tEnd);
 $('atkBtn').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();audio();pAtk=true;},{passive:false});
 const atkEnd=e=>{e.preventDefault();pAtk=false;};$('atkBtn').addEventListener('touchend',atkEnd,{passive:false});$('atkBtn').addEventListener('touchcancel',atkEnd,{passive:false});
+$('grabBtn').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();audio();if(state==='play'&&F[0])F[0].inp.grab=true;},{passive:false});
 $('grdBtn').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();tGuard=true;},{passive:false});
 {const ge=e=>{e.preventDefault();tGuard=false;};$('grdBtn').addEventListener('touchend',ge,{passive:false});$('grdBtn').addEventListener('touchcancel',ge,{passive:false});}
 $('ultBtn').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();if(state==='play'&&F[0])F[0].inp.ult=true;},{passive:false});
@@ -1155,7 +1158,7 @@ function update(dt){time+=dt;
  for(const c of cracks)c.life-=dt;cracks=cracks.filter(c=>c.life>0);
  if(banner)banner.life-=dt;}
 function endTick(rdt){if(state!=='end')return;endT-=rdt;if(endT<=0){if(MATCH.over)showOver();else{MATCH.round++;startRound();}}}
-function showOver(){state='over';pAtk=false;NET.rdy=0;lastLive='';const left=!!NET.msg;$('ovNet').textContent=NET.msg||'';if(!NET.sub)$('retryBtn').textContent='다시 하기 (R)';$('atkBtn').style.display='none';$('dashBtn').style.display='none';$('ultBtn').style.display='none';$('grdBtn').style.display='none';tGuard=false;const me=F[0],bt=F[1],win=left||MATCH.w[0]>MATCH.w[1];
+function showOver(){state='over';pAtk=false;NET.rdy=0;lastLive='';const left=!!NET.msg;$('ovNet').textContent=NET.msg||'';if(!NET.sub)$('retryBtn').textContent='다시 하기 (R)';$('atkBtn').style.display='none';$('dashBtn').style.display='none';$('ultBtn').style.display='none';$('grdBtn').style.display='none';$('grabBtn').style.display='none';tGuard=false;const me=F[0],bt=F[1],win=left||MATCH.w[0]>MATCH.w[1];
  // 전적 기록 (한 경기에 한 번). 온라인 중 상대가 나가면 승리로 친다
  if(!MATCH.rec){MATCH.rec=1;const r=bt&&bt.remote?REC.on:REC.bot;if(win)r.w++;else r.l++;saveRec();}
  $('ovT').textContent=win?'승리!':'패배...';$('ovS').textContent=(MATCH.bo>1?MATCH.w[0]+' : '+MATCH.w[1]+' · ':'')+(win?bt.name+'을(를) 날려버렸다!':bt.name+'에게 날아갔다...');
