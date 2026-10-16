@@ -1,4 +1,4 @@
-<title>흉기 남자 대난투</title>
+<title>흉기 인간: 영혼의 맞짱</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#0b0710;font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#f4ecff;user-select:none;-webkit-user-select:none;touch-action:none}
@@ -71,7 +71,7 @@ p.sub{opacity:.85;margin-bottom:14px;line-height:1.6}
 <div id="grdBtn" class="tbtn">🛡️</div>
 
 <div id="menu" class="ov show">
-  <h1>흉기 남자<small>대난투</small></h1>
+  <h1>흉기 인간<small>영혼의 맞짱</small></h1>
   <p class="sub">때려서 %를 쌓고, 경기장 밖으로 날려라! 목숨 3개 · 3판 2선승</p>
   <div id="recLine" class="rec"></div>
   <div id="authBox" class="auth" style="display:none"></div>
@@ -97,7 +97,7 @@ p.sub{opacity:.85;margin-bottom:14px;line-height:1.6}
   <h2>🎨 꾸미기</h2>
   <canvas id="lookCv" width="520" height="420"></canvas>
   <div class="lab">이름</div>
-  <input id="nmIn" maxlength="8" placeholder="흉기 남자">
+  <input id="nmIn" maxlength="8" placeholder="흉기 인간">
   <div class="lab">몸 색</div><div class="opts" id="oCol"></div>
   <div class="lab">모자</div><div class="opts" id="oHat"></div>
   <div class="lab">눈</div><div class="opts" id="oEye"></div>
@@ -458,7 +458,7 @@ function overheadPose(){if(P.U&&P.U.k!=='twin'&&P.U.k!=='bat'&&P.U.k!=='flail')r
 let VG=null,VGs='';
 function vignette(){const key=W+'x'+H;if(VGs!==key){VGs=key;VG=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.hypot(W,H)*.6);VG.addColorStop(0,'rgba(0,0,0,0)');VG.addColorStop(1,'rgba(0,0,0,.6)');}ctx.fillStyle=VG;ctx.fillRect(0,0,W,H);}
 
-/* ================= 대난투 본체 ================= */
+/* ================= 게임 본체 ================= */
 const AR=430;            // 경기장 반지름
 const KB_DIV=145;         // 피해 %가 이만큼 쌓이면 넉백 2배
 const FRIC=3.2;          // 날아가는 속도 감속
@@ -512,8 +512,9 @@ const COLS=['#ff8c2b','#4dabf7','#51cf66','#ff6b9d','#b197fc','#ffd43b','#20c997
 const HATS=[['horn','뿔 투구'],['knight','기사 투구'],['crown','왕관'],['straw','밀짚모자'],['beanie','털모자'],['none','맨머리']];
 const EYES=[['norm','보통'],['angry','부리부리'],['sleepy','졸린 눈'],['dot','점 눈']];
 const WLV=[[0,'기본'],[2,'쇠테'],[4,'강철'],[6,'황금'],[8,'전설']];
-let LOOK={name:'흉기 남자',col:'#ff8c2b',hat:'horn',eye:'norm',wlv:0};
+let LOOK={name:'흉기 인간',col:'#ff8c2b',hat:'horn',eye:'norm',wlv:0};
 try{const s=JSON.parse(localStorage.getItem('brawlLook'));if(s)LOOK=Object.assign(LOOK,s);}catch(e){}
+if(LOOK.name==='흉기 남자'||LOOK.name==='둔기 남자')LOOK.name='흉기 인간'; // 예전 기본 이름은 새 기본 이름으로
 let CFG={wp:'hammer',bot:'random',lv:'normal',bo:3,items:true};
 try{const s=JSON.parse(localStorage.getItem('brawlCfg'));if(s)CFG=Object.assign(CFG,s);}catch(e){}
 // 전적: 기기에 저장, 로그인하면 Firebase에도 저장 (on = 온라인, bot = 봇)
@@ -647,7 +648,7 @@ const OV=['menu','look','pause','over','online'];
 function hideAll(){OV.forEach(i=>$(i).classList.remove('show'));}
 function show(i){hideAll();$(i).classList.add('show');}
 
-function mkF(id,wp,look,bot){const D=WD[wp];return{id,wp,bot,name:look.name||'흉기 남자',col:look.col,hat:look.hat,eye:look.eye,wlv:look.wlv,tc:id?'#ff8787':'#74c0fc',
+function mkF(id,wp,look,bot){const D=WD[wp];return{id,wp,bot,name:look.name||'흉기 인간',col:look.col,hat:look.hat,eye:look.eye,wlv:look.wlv,tc:id?'#ff8787':'#74c0fc',
  x:0,y:0,z:0,vz:0,kx:0,ky:0,r:14,pct:0,stocks:3,state:'alive',face:0,mvx:1,mvy:0,walk:0,
  reach:D.reach,arc:D.arc,spd:D.spd,sw:null,swCd:0,swDir:1,queued:false,charging:false,chargeT:0,chargeSnd:0,atkHeld:false,
  slamPend:null,slamCd:0,slamAnim:0,slamA:0,spinA:null,stun:0,lag:0,inv:0,rinv:0,dashT:0,dashN:D.dash,dashMax:D.dash,dashCd:0,dashCdMax:1.4,dvx:0,dvy:0,dashAt:-9,trailT:0,
@@ -1101,14 +1102,14 @@ function renderMenu(){const box=$('wcards');box.innerHTML='';
  const ds=$('dsel');ds.innerHTML='';for(const k in BOTD){const b=document.createElement('button');b.className=CFG.lv===k?'on':'';b.innerHTML=BOTD[k].nm+'<small>'+BOTD[k].sub+'</small>';b.onclick=()=>{CFG.lv=k;saveCfg();renderMenu();};ds.appendChild(b);}
  const is=$('isel');is.innerHTML='';for(const [k,nm,sub] of[[true,'📦 아이템 켬','가끔 상자가 떨어져요'],[false,'아이템 끔','실력만으로']]){const b=document.createElement('button');b.className=CFG.items===k?'on':'';b.innerHTML=nm+'<small>'+sub+'</small>';b.onclick=()=>{CFG.items=k;saveCfg();renderMenu();};is.appendChild(b);}
  const bo=$('bosel');bo.innerHTML='';for(const [k,nm,sub] of[[1,'단판','목숨 3개 한 판'],[3,'3판 2선승','먼저 2판 이기면 승리']]){const b=document.createElement('button');b.className=CFG.bo===k?'on':'';b.innerHTML=nm+'<small>'+sub+'</small>';b.onclick=()=>{CFG.bo=k;saveCfg();renderMenu();};bo.appendChild(b);}
- $('meName').textContent=LOOK.name||'흉기 남자';renderRec();renderAuth();}
+ $('meName').textContent=LOOK.name||'흉기 인간';renderRec();renderAuth();}
 function renderLook(){const mk=(id,list,cur,set,sw)=>{const box=$(id);box.innerHTML='';for(const [v,lb] of list){const b=document.createElement('button');b.className=(sw?'sw':'')+(cur===v?' on':'');if(sw){b.style.background=v;b.title=v;}else b.textContent=lb;b.onclick=()=>{set(v);saveLook();renderLook();};box.appendChild(b);}};
  mk('oCol',COLS.map(c=>[c,'']),LOOK.col,v=>LOOK.col=v,true);
  mk('oHat',HATS,LOOK.hat,v=>LOOK.hat=v);mk('oEye',EYES,LOOK.eye,v=>LOOK.eye=v);mk('oWlv',WLV,LOOK.wlv,v=>LOOK.wlv=v);}
 function openLook(){state='look';$('nmIn').value=LOOK.name;renderLook();show('look');}
-function closeLook(){LOOK.name=($('nmIn').value||'').trim().slice(0,8)||'흉기 남자';saveLook();state='menu';renderMenu();show('menu');}
+function closeLook(){LOOK.name=($('nmIn').value||'').trim().slice(0,8)||'흉기 인간';saveLook();state='menu';renderMenu();show('menu');}
 $('lookBtn').onclick=openLook;$('lookDone').onclick=closeLook;
-$('nmIn').addEventListener('input',()=>{LOOK.name=$('nmIn').value.trim().slice(0,8)||'흉기 남자';});
+$('nmIn').addEventListener('input',()=>{LOOK.name=$('nmIn').value.trim().slice(0,8)||'흉기 인간';});
 
 // 미리보기 캐릭터 (메뉴·꾸미기 화면): 천천히 돌면서 가끔 휘두른다
 let pv=null,pvT=0;

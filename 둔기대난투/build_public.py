@@ -13,7 +13,7 @@ os.makedirs('../docs', exist_ok=True)
 URL = 'https://isitcold07-glitch.github.io/dungi-brawl/'
 DESC = '링크만 누르면 바로! 무기 9종으로 상대를 경기장 밖으로 날려라. 봇 대결 · ⚡빠른 대전 · 친구와 1:1'
 og = ('<meta name="description" content="%s">\n'
-      '<meta property="og:type" content="website">\n<meta property="og:title" content="흉기 남자 대난투">\n'
+      '<meta property="og:type" content="website">\n<meta property="og:title" content="흉기 인간: 영혼의 맞짱">\n'
       '<meta property="og:description" content="%s">\n<meta property="og:url" content="%s">\n'
       '<meta property="og:image" content="%sog.png">\n<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n'
       '<meta name="twitter:card" content="summary_large_image">\n<meta name="theme-color" content="#0b0710">\n') % (DESC, DESC, URL, URL)
