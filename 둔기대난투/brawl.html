@@ -1018,7 +1018,7 @@ function botAI(b,t,dt){const A=b.ai,Q=BOTD[CFG.lv],inp=b.inp;inp.mx=inp.my=0;A.g
  else if(d<rng+8&&Math.random()<Q.agg){inp.atk=true;A.tap=true;}}
 
 /* ---------- 입력 ---------- */
-const keys={},mouse={x:0,y:0};let useMouse=false,isTouch=false,pAtk=false,pGuard=false,mGuard=false,tGuard=false;let joy={on:false,id:null,sx:0,sy:0,x:0,y:0};
+const keys={},mouse={x:0,y:0};let useMouse=false,isTouch=false,pAtk=false,pGuard=false,mGuard=false,tGuard=false,mAtk=false;let joy={on:false,id:null,sx:0,sy:0,x:0,y:0};
 // 화면에서 경기장 가운데가 놓이는 높이: 아래 점수판(약 90px)을 뺀 영역의 가운데
 const camCY=()=>Math.round((H-90)/2+(H>520?24:8));
 function s2w(sx,sy){return{x:(sx-W/2)/cam.z+cam.x,y:(sy-camCY())/cam.z/T+cam.y};}
@@ -1041,9 +1041,15 @@ addEventListener('keydown',e=>{audio();if((e.target&&e.target.tagName==='INPUT')
 addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='KeyJ')pAtk=false;});
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false;pAtk=false;mGuard=tGuard=false;joy.on=false;if(state==='play'&&!NET.on)setPause(true);});
 cv.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;useMouse=true;});
-cv.addEventListener('mousedown',e=>{audio();if(e.button===2)mGuard=true;if(e.button===0){mouse.x=e.clientX;mouse.y=e.clientY;useMouse=true;pAtk=true;}});
-addEventListener('mouseup',e=>{if(e.button===0)pAtk=false;if(e.button===2)mGuard=false;});
-cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('mousedown',e=>{audio();if(e.button===2)mGuard=true;if(e.button===0){mouse.x=e.clientX;mouse.y=e.clientY;useMouse=true;pAtk=true;mAtk=true;}});
+addEventListener('mouseup',e=>{if(e.button===0){pAtk=false;mAtk=false;}if(e.button===2)mGuard=false;});
+// 오른쪽 클릭 메뉴는 화면 전체에서 막는다 (메뉴가 뜨면 버튼 뗀 신호를 놓쳐 가드가 안 풀린다)
+addEventListener('contextmenu',e=>{if(e.target&&e.target.tagName==='INPUT')return;e.preventDefault();});
+// 버튼을 뗀 신호를 놓쳐도: 마우스가 움직일 때 실제로 눌린 버튼(e.buttons)으로 다시 맞춘다
+addEventListener('mousemove',e=>{if(!(e.buttons&2))mGuard=false;if(mAtk&&!(e.buttons&1)){mAtk=false;pAtk=false;}});
+addEventListener('mouseleave',()=>{mGuard=false;});document.addEventListener('visibilitychange',()=>{if(document.hidden){mGuard=false;tGuard=false;pAtk=false;mAtk=false;}});
+// 오른쪽 버튼 마우스 제스처(웨일 등)나 실수로 누른 뒤로 가기 때문에 게임이 꺼지지 않게: 게임 중엔 뒤로 가기를 한 번 막는다
+try{history.pushState({brawl:1},'',location.href);addEventListener('popstate',()=>{if(inGame()||state==='online'||state==='over'){history.pushState({brawl:1},'',location.href);if(inGame())banner={t:'뒤로 가기는 막아 뒀어요',sub:'나가려면 Esc → 처음으로',life:1.4};}else history.back();});}catch(e){}
 cv.addEventListener('touchstart',e=>{audio();if(!isTouch){isTouch=true;useMouse=false;if(inGame()){$('atkBtn').style.display='flex';$('dashBtn').style.display='flex';$('ultBtn').style.display='flex';$('grdBtn').style.display='flex';}}
  for(const t of e.changedTouches){if(!joy.on)joy={on:true,id:t.identifier,sx:t.clientX,sy:t.clientY,x:t.clientX,y:t.clientY};}e.preventDefault();},{passive:false});
 cv.addEventListener('touchmove',e=>{for(const t of e.changedTouches)if(t.identifier===joy.id){joy.x=t.clientX;joy.y=t.clientY;}e.preventDefault();},{passive:false});
