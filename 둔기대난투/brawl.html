@@ -48,6 +48,9 @@ p.sub{opacity:.85;margin-bottom:14px;line-height:1.6}
 #nmIn{background:#231a30;border:2px solid #3b2c4a;color:#fff;border-radius:10px;padding:8px 12px;font-size:16px;text-align:center;width:220px;font-weight:800;margin:4px 0 6px;user-select:text;-webkit-user-select:text}
 .tbtn{position:fixed;border-radius:50%;display:none;align-items:center;justify-content:center;z-index:5;font-weight:800;color:#fff}
 #atkBtn{right:22px;bottom:110px;width:88px;height:88px;background:rgba(255,107,26,.25);border:3px solid #ff8c2b;font-size:36px}
+#recLine{font-size:14px;font-weight:800;color:#ffd43b;margin:-6px 0 8px;min-height:18px}
+.auth{font-size:13px;margin:-2px 0 8px;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+.auth .btn{margin:0}
 #online .code{font-size:46px;font-weight:900;letter-spacing:10px;color:#ffd43b;background:#1c1424;border:2px dashed #ffd43b88;border-radius:16px;padding:6px 22px;margin:6px 0 10px}
 #codeIn{background:#231a30;border:2px solid #3b2c4a;color:#fff;border-radius:10px;padding:9px 12px;font-size:20px;text-align:center;width:150px;font-weight:900;letter-spacing:4px;text-transform:uppercase;user-select:text;-webkit-user-select:text;vertical-align:middle}
 #oppInfo{margin:8px 0 6px;font-size:16px;min-height:24px}#ovNet{min-height:20px;margin-bottom:8px;color:#ffd43b;font-weight:800}
@@ -66,6 +69,8 @@ p.sub{opacity:.85;margin-bottom:14px;line-height:1.6}
 <div id="menu" class="ov show">
   <h1>흉기 남자<small>대난투</small></h1>
   <p class="sub">때려서 %를 쌓고, 경기장 밖으로 날려라! 목숨 3개 · 3판 2선승</p>
+  <div id="recLine" class="rec"></div>
+  <div id="authBox" class="auth" style="display:none"></div>
   <div class="mebox"><canvas id="meCv" width="240" height="200"></canvas><div><div class="nm" id="meName"></div><button class="btn sm gray" id="lookBtn">🎨 꾸미기</button></div></div>
   <div class="wsel">내 무기</div>
   <div class="wcards" id="wcards"></div>
@@ -75,7 +80,7 @@ p.sub{opacity:.85;margin-bottom:14px;line-height:1.6}
   <div class="dsel" id="dsel"></div>
   <div class="dsel" id="bosel"></div>
   <div class="dsel" id="isel"></div>
-  <button class="btn" id="startBtn">봇과 대결</button><button class="btn" id="onBtn" style="background:linear-gradient(180deg,#4dabf7,#1c5fd6);box-shadow:0 5px 0 #0b2a66">🌐 온라인 대결</button>
+  <button class="btn" id="startBtn">봇과 대결</button><button class="btn" id="onBtn" style="background:linear-gradient(180deg,#4dabf7,#1c5fd6);box-shadow:0 5px 0 #0b2a66">🌐 온라인 대결</button><button class="btn" id="qmBtn" style="display:none;background:linear-gradient(180deg,#ffd43b,#f08c00);box-shadow:0 5px 0 #7a4a00;color:#3a2000">⚡ 빠른 대전</button>
   <div class="ctrl">이동: WASD / 방향키 · 조준: 마우스 (마우스 없으면 상대 자동 조준)<br>
   <b>클릭</b> 또는 <b>J</b> = 휘두르기 · <b>꾹 눌렀다 떼기</b> = 차지 공격 · 대시: Space / Shift<br>
   상대 공격이 닿기 직전에 대시 = <b>저스트 회피</b>(다음 한 방 강화) · 일시정지: Esc · 소리: M · 브금: B<br>
@@ -100,6 +105,7 @@ p.sub{opacity:.85;margin-bottom:14px;line-height:1.6}
   <h2>🌐 온라인 대결</h2>
   <p class="sub" id="onMsg"></p>
   <div id="onJoin" style="display:none">
+    <button class="btn" id="qmBtn2" style="display:none;background:linear-gradient(180deg,#ffd43b,#f08c00);box-shadow:0 5px 0 #7a4a00;color:#3a2000">⚡ 빠른 대전 (아무나와)</button><br>
     <button class="btn" id="mkRoom">방 만들기</button>
     <div class="lab" style="margin:10px 0 4px">친구 방에 들어가기</div>
     <input id="codeIn" maxlength="6" placeholder="코드"> <button class="btn sm" id="joinRoom">참가</button>
@@ -506,6 +512,28 @@ let LOOK={name:'흉기 남자',col:'#ff8c2b',hat:'horn',eye:'norm',wlv:0};
 try{const s=JSON.parse(localStorage.getItem('brawlLook'));if(s)LOOK=Object.assign(LOOK,s);}catch(e){}
 let CFG={wp:'hammer',bot:'random',lv:'normal',bo:3,items:true};
 try{const s=JSON.parse(localStorage.getItem('brawlCfg'));if(s)CFG=Object.assign(CFG,s);}catch(e){}
+// 전적: 기기에 저장, 로그인하면 Firebase에도 저장 (on = 온라인, bot = 봇)
+let REC={on:{w:0,l:0},bot:{w:0,l:0}};try{const r=JSON.parse(localStorage.getItem('brawlRec'));if(r&&r.on&&r.bot)REC=r;}catch(e){}
+function saveRec(){try{localStorage.setItem('brawlRec',JSON.stringify(REC));}catch(e){}try{if(FB.user)fbSave();}catch(e){}}
+const recTxt=r=>(r.w|0)+'승 '+(r.l|0)+'패';
+// Firebase 설정: Firebase 콘솔의 웹 앱 설정값을 여기에 붙여 넣으면 로그인이 켜진다 (Claude 아티팩트에서는 쓰지 않음)
+const FB_CONFIG=null;
+const FB={on:false,user:null};const FB_V='10.12.2';
+function loadScript(src){return new Promise((res,rej)=>{const sc=document.createElement('script');sc.src=src;sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});}
+async function fbInit(){if(!FB_CONFIG||window.claude)return;try{const b='https://www.gstatic.com/firebasejs/'+FB_V+'/';await loadScript(b+'firebase-app-compat.js');await loadScript(b+'firebase-auth-compat.js');await loadScript(b+'firebase-firestore-compat.js');
+  firebase.initializeApp(FB_CONFIG);FB.on=true;firebase.auth().getRedirectResult().catch(()=>{});
+  firebase.auth().onAuthStateChanged(u=>{FB.user=u||null;if(u)fbLoad();renderAuth();});renderAuth();}catch(e){FB.on=false;}}
+function fbLogin(){const p=new firebase.auth.GoogleAuthProvider();firebase.auth().signInWithPopup(p).catch(e=>{if(e&&(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment'))firebase.auth().signInWithRedirect(p);});}
+function fbLogout(){firebase.auth().signOut();}
+const fbRef=()=>firebase.firestore().collection('users').doc(FB.user.uid);
+// 로그인하면 서버 전적과 이 기기 전적 중 큰 값을 쓴다
+async function fbLoad(){try{const d=await fbRef().get();if(d.exists){const r=d.data().rec||{};for(const k of['on','bot'])for(const j of['w','l'])REC[k][j]=Math.max(REC[k][j]|0,(r[k]&&+r[k][j])|0);}saveRec();renderRec();}catch(e){}}
+function fbSave(){fbRef().set({rec:REC,name:LOOK.name,updated:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(()=>{});}
+function renderAuth(){const b=$('authBox');if(!b)return;if(!FB.on){b.style.display='none';return;}b.style.display='flex';b.innerHTML='';
+ if(FB.user){const s=document.createElement('span');s.textContent='👤 '+(FB.user.displayName||FB.user.email||'로그인됨')+' · 전적 저장 중';const o=document.createElement('button');o.className='btn sm gray';o.textContent='로그아웃';o.onclick=fbLogout;b.append(s,o);}
+ else{const i=document.createElement('button');i.className='btn sm gray';i.textContent='🔑 Google로 로그인 (전적을 어디서나)';i.onclick=fbLogin;b.append(i);}}
+fbInit();
+function renderRec(){$('recLine').textContent='📊 온라인 '+recTxt(REC.on)+' · 봇 '+recTxt(REC.bot);}
 const saveLook=()=>{try{localStorage.setItem('brawlLook',JSON.stringify(LOOK));}catch(e){}};
 const saveCfg=()=>{try{localStorage.setItem('brawlCfg',JSON.stringify(CFG));}catch(e){}};
 const BOTD={easy:{nm:'쉬움',sub:'느긋한 허수아비',rt:.5,agg:.45,dodge:.06,chg:.12,guard:.05,bn:'허수아비 봇'},normal:{nm:'보통',sub:'적당히 때림',rt:.26,agg:.75,dodge:.22,chg:.28,guard:.22,bn:'흉기 봇'},hard:{nm:'어려움',sub:'회피·가드 잘 씀',rt:.12,agg:.95,dodge:.4,chg:.42,guard:.4,bn:'흉기 고수'}};
@@ -1000,7 +1028,7 @@ $('grdBtn').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagati
 {const ge=e=>{e.preventDefault();tGuard=false;};$('grdBtn').addEventListener('touchend',ge,{passive:false});$('grdBtn').addEventListener('touchcancel',ge,{passive:false});}
 $('ultBtn').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();if(state==='play'&&F[0])F[0].inp.ult=true;},{passive:false});
 $('dashBtn').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();if(state==='play'&&F[0])F[0].inp.dash=true;},{passive:false});
-$('startBtn').onclick=start;$('retryBtn').onclick=retry;$('onBtn').onclick=openOnline;
+$('startBtn').onclick=start;$('qmBtn').onclick=()=>quickMatch();$('qmBtn2').onclick=()=>quickMatch();$('retryBtn').onclick=retry;$('onBtn').onclick=openOnline;
 $('mkRoom').onclick=()=>{const a='abcdefghjkmnpqrstuvwxyz23456789';let c='';for(let i=0;i<4;i++)c+=a[Math.random()*a.length|0];joinCode(c,true);};
 $('joinRoom').onclick=()=>joinCode($('codeIn').value);$('codeIn').addEventListener('keydown',e=>{if(e.code==='Enter')joinCode($('codeIn').value);e.stopPropagation();});
 $('readyBtn').onclick=toggleReady;$('leaveRoom').onclick=()=>{leaveOnline();NET.msg='';renderOnline();};$('onBack').onclick=()=>{toMenu();};$('resumeBtn').onclick=()=>setPause(false);$('quitBtn').onclick=toMenu;$('menuBtn').onclick=toMenu;
@@ -1028,7 +1056,7 @@ function renderMenu(){const box=$('wcards');box.innerHTML='';
  const ds=$('dsel');ds.innerHTML='';for(const k in BOTD){const b=document.createElement('button');b.className=CFG.lv===k?'on':'';b.innerHTML=BOTD[k].nm+'<small>'+BOTD[k].sub+'</small>';b.onclick=()=>{CFG.lv=k;saveCfg();renderMenu();};ds.appendChild(b);}
  const is=$('isel');is.innerHTML='';for(const [k,nm,sub] of[[true,'📦 아이템 켬','가끔 상자가 떨어져요'],[false,'아이템 끔','실력만으로']]){const b=document.createElement('button');b.className=CFG.items===k?'on':'';b.innerHTML=nm+'<small>'+sub+'</small>';b.onclick=()=>{CFG.items=k;saveCfg();renderMenu();};is.appendChild(b);}
  const bo=$('bosel');bo.innerHTML='';for(const [k,nm,sub] of[[1,'단판','목숨 3개 한 판'],[3,'3판 2선승','먼저 2판 이기면 승리']]){const b=document.createElement('button');b.className=CFG.bo===k?'on':'';b.innerHTML=nm+'<small>'+sub+'</small>';b.onclick=()=>{CFG.bo=k;saveCfg();renderMenu();};bo.appendChild(b);}
- $('meName').textContent=LOOK.name||'흉기 남자';}
+ $('meName').textContent=LOOK.name||'흉기 남자';renderRec();renderAuth();}
 function renderLook(){const mk=(id,list,cur,set,sw)=>{const box=$(id);box.innerHTML='';for(const [v,lb] of list){const b=document.createElement('button');b.className=(sw?'sw':'')+(cur===v?' on':'');if(sw){b.style.background=v;b.title=v;}else b.textContent=lb;b.onclick=()=>{set(v);saveLook();renderLook();};box.appendChild(b);}};
  mk('oCol',COLS.map(c=>[c,'']),LOOK.col,v=>LOOK.col=v,true);
  mk('oHat',HATS,LOOK.hat,v=>LOOK.hat=v);mk('oEye',EYES,LOOK.eye,v=>LOOK.eye=v);mk('oWlv',WLV,LOOK.wlv,v=>LOOK.wlv=v);}
@@ -1063,10 +1091,12 @@ function update(dt){time+=dt;
  for(const c of cracks)c.life-=dt;cracks=cracks.filter(c=>c.life>0);
  if(banner)banner.life-=dt;}
 function endTick(rdt){if(state!=='end')return;endT-=rdt;if(endT<=0){if(MATCH.over)showOver();else{MATCH.round++;startRound();}}}
-function showOver(){state='over';pAtk=false;NET.rdy=0;lastLive='';$('ovNet').textContent=NET.msg||'';if(!NET.sub)$('retryBtn').textContent='다시 하기 (R)';$('atkBtn').style.display='none';$('dashBtn').style.display='none';$('ultBtn').style.display='none';$('grdBtn').style.display='none';tGuard=false;const me=F[0],bt=F[1],win=MATCH.w[0]>MATCH.w[1];
+function showOver(){state='over';pAtk=false;NET.rdy=0;lastLive='';const left=!!NET.msg;$('ovNet').textContent=NET.msg||'';if(!NET.sub)$('retryBtn').textContent='다시 하기 (R)';$('atkBtn').style.display='none';$('dashBtn').style.display='none';$('ultBtn').style.display='none';$('grdBtn').style.display='none';tGuard=false;const me=F[0],bt=F[1],win=left||MATCH.w[0]>MATCH.w[1];
+ // 전적 기록 (한 경기에 한 번). 온라인 중 상대가 나가면 승리로 친다
+ if(!MATCH.rec){MATCH.rec=1;const r=bt&&bt.remote?REC.on:REC.bot;if(win)r.w++;else r.l++;saveRec();}
  $('ovT').textContent=win?'승리!':'패배...';$('ovS').textContent=(MATCH.bo>1?MATCH.w[0]+' : '+MATCH.w[1]+' · ':'')+(win?bt.name+'을(를) 날려버렸다!':bt.name+'에게 날아갔다...');
  const box=f=>'<div><b style="color:'+f.tc+'">'+(f.id?'':'▼ ')+esc(f.name)+' '+WD[f.wp].ic+'</b>남은 목숨: '+'●'.repeat(Math.max(0,f.stocks))+'○'.repeat(3-Math.max(0,f.stocks))+'<br>준 피해: '+Math.round(f.st.dealt)+'%<br>날린 횟수: '+f.st.ko+'<br>저스트 회피: '+f.st.jd+'<br>패링: '+(f.st.parry||0)+(f.wp==='pan'?'<br>깡! 반격: '+f.st.guard:'')+'</div>';
- $('ovStats').innerHTML=box(me)+box(bt)+'<div style="min-width:0;align-self:center;opacity:.8">시간 '+Math.floor(matchT/60)+':'+String(Math.floor(matchT%60)).padStart(2,'0')+'</div>';
+ $('ovStats').innerHTML=box(me)+box(bt)+'<div style="min-width:0;align-self:center;opacity:.9">📊 '+(bt&&bt.remote?'온라인 '+recTxt(REC.on):'봇 '+recTxt(REC.bot))+'</div>'+'<div style="min-width:0;align-self:center;opacity:.8">시간 '+Math.floor(matchT/60)+':'+String(Math.floor(matchT%60)).padStart(2,'0')+'</div>';
  show('over');}
 
 /* ---------- 카메라 ---------- */
@@ -1246,9 +1276,9 @@ const NET={rtt:0,predT:0,vel:{x:0,y:0},lp:null,recvT:0,oppTm:null,on:false,sub:n
 const PEERJS_URL='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
 (async()=>{if(window.claude&&window.claude.use){try{ROOM=await window.claude.use('room');}catch(e){ROOM=null;}ROOM_ST=ROOM?'ok':'none';}
  else{ROOM_ST=await new Promise(res=>{if(window.Peer)return res('p2p');const sc=document.createElement('script');sc.src=PEERJS_URL;sc.onload=()=>res(window.Peer?'p2p':'none');sc.onerror=()=>res('none');document.head.appendChild(sc);setTimeout(()=>res(window.Peer?'p2p':'none'),12000);});}
- if(state==='online')renderOnline();})();
+ if(ROOM_ST==='p2p')$('qmBtn').style.display='';if(state==='online')renderOnline();})();
 // P2P 방: 방장은 'dungibrawl-코드' 이름으로 기다리고, 참가자가 그 이름으로 연결한다. room과 같은 모양(peers·presence·connected·onPeers·leave)으로 감싼다
-function p2pRoom(code,host){return new Promise((resolve,reject)=>{const hostId='dungibrawl-'+code;let conn=null,opp=null,myP=Object.freeze({}),snap=null,done=false;const hs=[];
+function p2pRoom(code,host,tmo=15000){return new Promise((resolve,reject)=>{const hostId='dungibrawl-'+code;let conn=null,opp=null,myP=Object.freeze({}),snap=null,done=false;const hs=[];
  const peer=host?new Peer(hostId):new Peer();
  const fire=()=>{snap=null;for(const h of hs)setTimeout(()=>h({peers:api.peers(),joined:[],left:[],updated:[]}),0);};
  const api={name:code,
@@ -1256,14 +1286,19 @@ function p2pRoom(code,host){return new Promise((resolve,reject)=>{const hostId='
   connected:()=>!!(conn&&conn.open),
   presence:async o=>{const m=Object.assign({},myP);for(const k in o){if(o[k]===null)delete m[k];else m[k]=o[k];}myP=Object.freeze(m);snap=null;if(conn&&conn.open)conn.send(m);},
   onPeers:(h,e)=>{hs.push(h);api.onErr=e;return()=>{};},
-  leave:async()=>{try{conn&&conn.close();}catch(e){}try{peer.destroy();}catch(e){}}};
- const setup=c=>{c.on('open',()=>{conn=c;c.send(myP);fire();if(!done){done=true;resolve(api);}});
-  c.on('data',d=>{if(d&&typeof d==='object'&&!Array.isArray(d)){const first=!opp;opp=Object.freeze(d);snap=null;if(first)fire();if(api.onData)try{api.onData();}catch(e){console.error(e);}}});
+  leave:async()=>{api.closed=true;try{conn&&conn.close();}catch(e){}try{peer.destroy();}catch(e){}}};
+ const setup=c=>{c.on('open',()=>{conn=c;c.send(Object.keys(myP).length?myP:{hi:1});fire();if(host&&!done){done=true;resolve(api);}});
+  c.on('data',d=>{if(d&&d.busy){if(!done){done=true;try{peer.destroy();}catch(_){}reject({code:'busy',t:'busy'});}return;}if(!host&&!done){done=true;resolve(api);}if(d&&typeof d==='object'&&!Array.isArray(d)&&d.pl){const first=!opp;opp=Object.freeze(d);snap=null;if(first)fire();if(api.onData)try{api.onData();}catch(e){console.error(e);}}});
   c.on('close',()=>{if(conn===c){conn=null;opp=null;fire();}});c.on('error',()=>{});};
  peer.on('open',()=>{if(host){done=true;resolve(api);}else setup(peer.connect(hostId,{serialization:'json',reliable:false}));});
- peer.on('connection',c=>{if(conn&&conn.open){c.on('open',()=>c.close());return;}setup(c);});
- peer.on('error',e=>{const t=e&&e.type;if(!done){done=true;try{peer.destroy();}catch(_){}reject({code:t==='peer-unavailable'?'방을 찾을 수 없어요':t==='unavailable-id'?'이미 쓰는 방 코드예요. 다시 만들어 주세요':t==='network'||t==='server-error'||t==='socket-error'?'연결 서버에 접속하지 못했어요':(t||'오류')});}});
- setTimeout(()=>{if(!done){done=true;try{peer.destroy();}catch(_){}reject({code:'시간 초과'});}},15000);});}
+ peer.on('connection',c=>{if(conn&&conn.open||api.closed){c.on('open',()=>{try{c.send({busy:1});}catch(_){}setTimeout(()=>{try{c.close();}catch(_){}},150);});return;}setup(c);});
+ peer.on('error',e=>{const t=e&&e.type;if(!done){done=true;try{peer.destroy();}catch(_){}reject({t,code:t==='peer-unavailable'?'방을 찾을 수 없어요':t==='unavailable-id'?'이미 쓰는 방 코드예요. 다시 만들어 주세요':t==='network'||t==='server-error'||t==='socket-error'?'연결 서버에 접속하지 못했어요':(t||'오류')});}});
+ setTimeout(()=>{if(!done){done=true;try{peer.destroy();}catch(_){}reject({t:'timeout',code:'시간 초과'});}},tmo);});}
+// 빠른 대전: qm1~qm10 자리를 차례로 본다. 비었으면 그 자리에서 기다리고, 누가 기다리면 붙고, 대전 중(busy)이면 다음 자리
+async function quickSlot(){for(let i=1;i<=10;i++){
+  try{return await p2pRoom('qm'+i,true);}catch(e){if(e.t!=='unavailable-id')throw e;}
+  try{return await p2pRoom('qm'+i,false,6000);}catch(e){if(e.t==='network'||e.t==='server-error'||e.t==='socket-error')throw e;}}
+ throw {code:'지금은 자리가 꽉 찼어요. 잠시 후 다시 눌러 주세요'};}
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const r1=v=>Math.round(v*10)/10,r2=v=>Math.round(v*100)/100;
 function myPeer(){const p=NET.sub&&NET.sub.peers().find(q=>q.sameTab);return p?p.peer:'';}
@@ -1342,11 +1377,13 @@ function netTick(){if(!NET.sub)return;const opp=findOpp();
  // 핑: 내 시각(tm)을 보내고, 상대가 받은 내 시각과 들고 있던 시간(ec)을 돌려주면 왕복 시간을 잰다
  const nowMs=Math.round(performance.now());if(opp&&Array.isArray(opp.presence.ec)){const e=opp.presence.ec,r=nowMs-(+e[0])-(+e[1]);if(r>0&&r<5000&&e[0]!==NET.lastEc){NET.lastEc=e[0];NET.rtt=NET.rtt?NET.rtt*.8+r*.2:r;}}
  if(opp&&Number.isFinite(+opp.presence.tm)&&opp.presence.tm!==(NET.oppTm&&NET.oppTm.tm))NET.oppTm={tm:+opp.presence.tm,at:nowMs};
- const pres={tm:nowMs,ec:NET.oppTm?[NET.oppTm.tm,nowMs-NET.oppTm.at]:null,pl:1,nm:LOOK.name,col:LOOK.col,hat:LOOK.hat,eye:LOOK.eye,wlv:LOOK.wlv,wp:CFG.wp,rdy:NET.rdy,gen:NET.gen,it:CFG.items?1:0,
+ const pres={tm:nowMs,ec:NET.oppTm?[NET.oppTm.tm,nowMs-NET.oppTm.at]:null,pl:1,nm:LOOK.name,col:LOOK.col,hat:LOOK.hat,eye:LOOK.eye,wlv:LOOK.wlv,wp:CFG.wp,rdy:NET.rdy,gen:NET.gen,it:CFG.items?1:0,rc:[REC.on.w|0,REC.on.l|0],
   rd:inG?MATCH.round:0,g:inG&&F[0]?packF(F[0]):null,hits:NET.hits.map(({t,...h})=>h)};
 NET.lastPres=pres;
  NET.sub.presence(pres).then(()=>{NET.pOk=(NET.pOk||0)+1;},e=>{NET.pErr=(e&&e.code||'?')+(e&&e.message?': '+String(e.message).slice(0,80):'');});
  if(state==='online'||state==='over')renderOnlineLive(opp);
+ // 빠른 대전: 상대가 보이면 자동으로 준비
+ if(NET.quick&&opp&&state==='online'&&NET.rdy!==NET.gen+1)NET.rdy=NET.gen+1;
  // 둘 다 같은 판 번호로 준비하면 시작
  if(opp&&!inG&&NET.rdy===NET.gen+1&&opp.presence.rdy===NET.gen+1){NET.gen++;startOnline(opp);return;}
  if(!inG)return;
@@ -1363,13 +1400,19 @@ function startOnline(opp){const g=opp.presence;NET.on=true;NET.msg='';NET.side=m
  matchT=0;audio();startRound();}
 // 방 코드별 공간: 이름 붙은 방(join)은 같은 계정의 두 창이 서로 안 보이는 경우가 있어,
 // 게임을 연 모두가 있는 기본 방(lobby)에서 presence의 rm(방 코드)이 같은 사람끼리만 짝짓는다
-const NET_KEYS=['it','tm','ec','pl','nm','col','hat','eye','wlv','wp','rdy','gen','rd','g','hits','rm'];
+const NET_KEYS=['rc','it','tm','ec','pl','nm','col','hat','eye','wlv','wp','rdy','gen','rd','g','hits','rm'];
 function codeRoom(code){const mine=p=>p.sameTab||(p.presence&&p.presence.rm===code);
  return{name:code,peers:()=>ROOM.peers().filter(mine),connected:()=>ROOM.connected(),
   presence:o=>ROOM.presence(Object.assign({},o,{rm:code})),
   onPeers:(h,e)=>ROOM.onPeers(c=>h({peers:c.peers.filter(mine),joined:c.joined.filter(mine),left:c.left,updated:c.updated.filter(mine)}),e),
   leave:async()=>{const clr={};for(const k of NET_KEYS)clr[k]=null;await ROOM.presence(clr);}};}
-async function joinCode(code,host){if((!ROOM&&ROOM_ST!=='p2p')||NET.joining)return;code=String(code||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,6);if(code.length<3){NET.msg='방 코드는 3글자 이상이에요';renderOnline();return;}
+async function quickMatch(){if(ROOM_ST!=='p2p'||NET.joining)return;if(state!=='online')openOnline();NET.joining=true;NET.quick=true;NET.msg='⚡ 상대를 찾는 중...';renderOnline();
+ try{if(NET.sub){await NET.sub.leave();NET.sub=null;}const sub=await quickSlot();setupSub(sub,'빠른 대전');}
+ catch(e){NET.msg='빠른 대전에 실패했어요'+(e&&e.code?' ('+e.code+')':'');NET.sub=null;NET.quick=false;}
+ NET.joining=false;renderOnline();}
+function setupSub(sub,code){NET.sub=sub;if(ROOM_ST==='p2p')sub.onData=()=>{if(NET.on&&(state==='play'||state==='count')){const o=findOpp();if(o)netRecv(o);}};NET.code=code;NET.gen=0;NET.rdy=0;NET.oppPeer=null;NET.msg='';netTick();
+ sub.onPeers(()=>{if(state==='online')renderOnlineLive(findOpp());},e=>{NET.msg='방 연결이 끊겼어요 ('+e.code+')';NET.sub=null;NET.on=false;renderOnline();});}
+async function joinCode(code,host){NET.quick=false;if((!ROOM&&ROOM_ST!=='p2p')||NET.joining)return;code=String(code||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,6);if(code.length<3){NET.msg='방 코드는 3글자 이상이에요';renderOnline();return;}
  NET.joining=true;NET.msg='방에 들어가는 중...';renderOnline();
  try{if(NET.sub){await NET.sub.leave();NET.sub=null;}const sub=ROOM_ST==='p2p'?await p2pRoom(code,!!host):codeRoom(code);NET.sub=sub;if(ROOM_ST==='p2p')sub.onData=()=>{if(NET.on&&(state==='play'||state==='count')){const o=findOpp();if(o)netRecv(o);}};NET.code=code;NET.gen=0;NET.rdy=0;NET.oppPeer=null;NET.msg='';netTick();
   sub.onPeers(()=>{if(state==='online')renderOnlineLive(findOpp());},e=>{NET.msg='방 연결이 끊겼어요 ('+e.code+')';NET.sub=null;NET.on=false;renderOnline();});
@@ -1378,14 +1421,15 @@ async function joinCode(code,host){if((!ROOM&&ROOM_ST!=='p2p')||NET.joining)retu
    if(others.length>=2&&!others.some(p=>p.presence.op===myPeer())){leaveOnline();NET.msg='방이 꽉 찼어요 (2명까지)';renderOnline();}},1500);}
  catch(e){NET.msg='방에 들어가지 못했어요'+(e&&e.code?' ('+e.code+')':'');NET.sub=null;}
  NET.joining=false;renderOnline();}
-function leaveOnline(){if(NET.sub){NET.sub.leave().catch(()=>{});}NET.sub=null;NET.on=false;NET.rdy=0;NET.gen=0;NET.code='';NET.oppPeer=null;}
+function leaveOnline(){NET.quick=false;if(NET.sub){NET.sub.leave().catch(()=>{});}NET.sub=null;NET.on=false;NET.rdy=0;NET.gen=0;NET.code='';NET.oppPeer=null;}
 function openOnline(){state='online';NET.msg='';renderOnline();show('online');}
 function renderOnline(){const m=$('onMsg'),join=$('onJoin'),wait=$('onWait');
  if(ROOM_ST==='wait'){m.textContent='온라인 연결 확인 중...';join.style.display='none';wait.style.display='none';return;}
  if(!ROOM&&ROOM_ST!=='p2p'){m.innerHTML=ROOM_ST==='none'&&!window.claude?'온라인 연결 도구(PeerJS)를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.':'온라인 대결은 <b>Claude에 로그인</b>하고 <b>이 게임에 이메일로 초대받은 사람</b>만 할 수 있어요.<br>게임 주인이 공유 설정의 일반 액세스를 <b>\'링크가 있는 모든 사용자\'</b>로 해 두면 초대받아도 안 돼요 → <b>제한됨</b>으로 바꿔 주세요.<br>지금 화면에서는 봇 대결만 할 수 있어요.';join.style.display='none';wait.style.display='none';return;}
  m.textContent=NET.msg||(NET.sub?'':'방을 만들고 코드를 친구에게 알려 주세요. 친구는 같은 게임 링크에서 코드를 입력하면 돼요.'+(ROOM_ST==='p2p'?' (P2P 직접 연결)':''));
  join.style.display=NET.sub?'none':'block';wait.style.display=NET.sub?'block':'none';
- if(NET.sub){$('codeShow').textContent=NET.code.toUpperCase();$('myWp').textContent=WD[CFG.wp].ic+' '+WD[CFG.wp].nm;}
+ $('readyBtn').style.display=NET.quick?'none':'';$('qmBtn2').style.display=ROOM_ST==='p2p'?'':'none';
+ if(NET.sub){$('codeShow').textContent=NET.quick?'⚡ 빠른 대전':NET.code.toUpperCase();$('myWp').textContent=WD[CFG.wp].ic+' '+WD[CFG.wp].nm;}
  renderOnlineLive(findOpp());}
 let lastLive='';
 function netDebug(){if(!NET.sub||state!=='online')return;const ps=NET.sub.peers(),c=NET.sub.connected();
@@ -1393,7 +1437,7 @@ function netDebug(){if(!NET.sub||state!=='online')return;const ps=NET.sub.peers(
  if($('netDbg').textContent!==txt)$('netDbg').textContent=txt;}
 function renderOnlineLive(opp){if(!NET.sub)return;netDebug();const key=(opp?opp.peer+opp.presence.nm+opp.presence.wp+opp.presence.rdy:'-')+NET.rdy+NET.gen+state+NET.msg;if(key===lastLive)return;lastLive=key;
  const waiting=NET.rdy===NET.gen+1;
- if(state==='online'){$('oppInfo').innerHTML=opp?'상대: <b>'+esc(lookOf(opp.presence).name)+'</b> '+WD[wpOf(opp.presence)].ic+' '+WD[wpOf(opp.presence)].nm+(opp.presence.rdy===NET.gen+1?' · <b style="color:#69db7c">준비 완료</b>':' · 준비 중...'):'상대를 기다리는 중... 친구에게 방 코드를 알려 주세요';
+ if(state==='online'){$('oppInfo').innerHTML=opp?'상대: <b>'+esc(lookOf(opp.presence).name)+'</b>'+(Array.isArray(opp.presence.rc)?' ('+recTxt({w:+opp.presence.rc[0]||0,l:+opp.presence.rc[1]||0})+')':'')+' '+WD[wpOf(opp.presence)].ic+' '+WD[wpOf(opp.presence)].nm+(opp.presence.rdy===NET.gen+1?' · <b style="color:#69db7c">준비 완료</b>':(NET.quick?' · 곧 시작!':' · 준비 중...')):(NET.quick?'⚡ 상대를 찾는 중... 다른 사람이 빠른 대전을 누르면 바로 시작해요':'상대를 기다리는 중... 친구에게 방 코드를 알려 주세요');
   $('readyBtn').textContent=!opp&&!waiting?'상대 기다리는 중':waiting?'준비 취소':'준비!';$('readyBtn').disabled=!opp&&!waiting;$('readyBtn').style.opacity=!opp&&!waiting?.5:1;if(NET.msg)$('onMsg').textContent=NET.msg;}
  if(state==='over'){$('retryBtn').textContent=!NET.sub||!opp?'상대 없음':waiting?'상대 기다리는 중...':opp.presence.rdy===NET.gen+1?'재대결 수락!':'재대결';$('ovNet').textContent=!opp?'상대가 방을 나갔어요':opp.presence.rdy===NET.gen+1&&!waiting?'상대가 재대결을 원해요!':'';}}
 // 안 보이는 탭에서는 화면 갱신(requestAnimationFrame)이 멈추므로, 그동안에도 방 신호는 타이머로 보낸다

@@ -9,5 +9,14 @@ head = re.sub(r'<meta charset="utf-8">\s*', '', head)
 head = re.sub(r'<meta name="viewport"[^>]*>\s*', '', head)
 open('brawl.html', 'w', encoding='utf-8').write(head.strip() + '\n' + body.strip() + '\n')
 os.makedirs('../docs', exist_ok=True)
-open('../docs/index.html', 'w', encoding='utf-8').write(s)
+# 링크 미리보기(에타·카톡·디스코드 등): 제목·설명·대표 그림(docs/og.png)
+URL = 'https://isitcold07-glitch.github.io/dungi-brawl/'
+DESC = '링크만 누르면 바로! 무기 9종으로 상대를 경기장 밖으로 날려라. 봇 대결 · ⚡빠른 대전 · 친구와 1:1'
+og = ('<meta name="description" content="%s">\n'
+      '<meta property="og:type" content="website">\n<meta property="og:title" content="흉기 남자 대난투">\n'
+      '<meta property="og:description" content="%s">\n<meta property="og:url" content="%s">\n'
+      '<meta property="og:image" content="%sog.png">\n<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n'
+      '<meta name="twitter:card" content="summary_large_image">\n<meta name="theme-color" content="#0b0710">\n') % (DESC, DESC, URL, URL)
+web = s.replace('</title>', '</title>\n' + og, 1)
+open('../docs/index.html', 'w', encoding='utf-8').write(web)
 print('brawl.html, ../docs/index.html 생성 완료')
