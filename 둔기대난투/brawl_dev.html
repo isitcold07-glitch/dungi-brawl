@@ -555,7 +555,8 @@ async function fbLoad(){try{const d=await fbRef().get();if(d.exists){const r=d.d
 function fbSave(){fbRef().set({rec:REC,name:LOOK.name,updated:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(()=>{});}
 function renderAuth(keepInputs){const b=$('authBox');if(!b)return;if(!FB.on){b.style.display='none';return;}b.style.display='flex';
  const mk=(t,c,f)=>{const x=document.createElement('button');x.className='btn sm '+(c||'gray');x.textContent=t;x.onclick=f;return x;};
- if(keepInputs&&$('authMsg')){$('authMsg').textContent=authMsg;return;}
+ // 입력 칸이 이미 떠 있으면 문구만 바꾼다 (입력한 아이디·비밀번호 유지)
+ if(!FB.user&&authForm&&$('authMsg')){$('authMsg').textContent=authMsg;return;}
  const keepId=$('authId')?$('authId').value:'';b.innerHTML='';
  if(FB.user){const s=document.createElement('span');s.textContent='👤 '+authName(FB.user)+' · 전적이 계정에 저장돼요';b.append(s,mk('로그아웃','gray',fbLogout));return;}
  if(!authForm){b.append(mk('🔑 Google로 로그인','gray',fbLogin),mk('🪪 아이디로 로그인','gray',()=>{authForm=true;authMsg='';renderAuth();}));return;}
@@ -563,7 +564,8 @@ function renderAuth(keepInputs){const b=$('authBox');if(!b)return;if(!FB.on){b.s
  box.innerHTML='<input id="authId" maxlength="16" placeholder="아이디" autocomplete="username"><input id="authPw" type="password" maxlength="64" placeholder="비밀번호 (6자 이상)" autocomplete="current-password"><div id="authMsg"></div>';
  b.append(box);$('authId').value=keepId;const row=document.createElement('div');row.style.cssText='display:flex;gap:6px;justify-content:center;flex-wrap:wrap';
  row.append(mk('로그인','',()=>idAuth(false)),mk('가입','gray',()=>idAuth(true)),mk('닫기','gray',()=>{authForm=false;authMsg='';renderAuth();}));b.append(row);$('authMsg').textContent=authMsg;
- $('authPw').addEventListener('keydown',e=>{if(e.key==='Enter')idAuth(false);});}
+ $('authId').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')$('authPw').focus();});
+ $('authPw').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')idAuth(false);});}
 fbInit();
 function renderRec(){$('recLine').textContent='📊 온라인 '+recTxt(REC.on)+' · 봇 '+recTxt(REC.bot);}
 const saveLook=()=>{try{localStorage.setItem('brawlLook',JSON.stringify(LOOK));}catch(e){}};
@@ -1036,7 +1038,7 @@ function playerInput(f){const i=f.inp;let mx=0,my=0;
  else if(o.state==='alive')i.aim=Math.atan2(o.y-f.y,o.x-f.x);else if(mx||my)i.aim=Math.atan2(my,mx);
  i.atk=pAtk;i.guard=!!(keys.KeyQ||mGuard||tGuard);}
 const inGame=()=>state==='play'||state==='count'||state==='end';
-addEventListener('keydown',e=>{audio();if(document.activeElement&&document.activeElement.tagName==='INPUT')return;keys[e.code]=true;
+addEventListener('keydown',e=>{audio();if((e.target&&e.target.tagName==='INPUT')||(document.activeElement&&document.activeElement.tagName==='INPUT'))return;keys[e.code]=true;
  if(state==='play'){if(e.code==='Space'||e.code==='ShiftLeft'||e.code==='ShiftRight'||e.code==='KeyK')F[0].inp.dash=true;if(e.code==='KeyJ'&&!e.repeat)pAtk=true;if(e.code==='KeyE'||e.code==='KeyL')F[0].inp.ult=true;if(e.code==='KeyF'&&!e.repeat)F[0].inp.grab=true;}
  if(e.code==='Escape'||e.code==='KeyP'){if(NET.on&&inGame()){if($('pause').classList.contains('show'))setPause(false);else setPause(true);}else if(state==='play')setPause(true);else if(state==='pause')setPause(false);else if(state==='look')closeLook();}
  if(e.code==='KeyM')muted=!muted;

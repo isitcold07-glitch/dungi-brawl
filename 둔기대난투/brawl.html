@@ -51,6 +51,10 @@ p.sub{opacity:.85;margin-bottom:14px;line-height:1.6}
 #recLine{font-size:14px;font-weight:800;color:#ffd43b;margin:-6px 0 8px;min-height:18px}
 .auth{font-size:13px;margin:-2px 0 8px;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
 .auth .btn{margin:0}
+.authForm{display:flex;flex-direction:column;gap:6px;align-items:center;width:100%}
+.authForm input{background:#231a30;border:2px solid #3b2c4a;color:#fff;border-radius:10px;padding:8px 12px;font-size:15px;width:220px;user-select:text;-webkit-user-select:text}
+#authMsg{font-size:12px;color:#ffa8a8;min-height:15px}
+.auth{flex-direction:row}
 #online .code{font-size:46px;font-weight:900;letter-spacing:10px;color:#ffd43b;background:#1c1424;border:2px dashed #ffd43b88;border-radius:16px;padding:6px 22px;margin:6px 0 10px}
 #codeIn{background:#231a30;border:2px solid #3b2c4a;color:#fff;border-radius:10px;padding:9px 12px;font-size:20px;text-align:center;width:150px;font-weight:900;letter-spacing:4px;text-transform:uppercase;user-select:text;-webkit-user-select:text;vertical-align:middle}
 #oppInfo{margin:8px 0 6px;font-size:16px;min-height:24px}#ovNet{min-height:20px;margin-bottom:8px;color:#ffd43b;font-weight:800}
@@ -517,21 +521,44 @@ let REC={on:{w:0,l:0},bot:{w:0,l:0}};try{const r=JSON.parse(localStorage.getItem
 function saveRec(){try{localStorage.setItem('brawlRec',JSON.stringify(REC));}catch(e){}try{if(FB.user)fbSave();}catch(e){}}
 const recTxt=r=>(r.w|0)+'승 '+(r.l|0)+'패';
 // Firebase 설정: Firebase 콘솔의 웹 앱 설정값을 여기에 붙여 넣으면 로그인이 켜진다 (Claude 아티팩트에서는 쓰지 않음)
-const FB_CONFIG=null;
+const FB_CONFIG={apiKey:'AIzaSyCsDXPTHFufiDy-gSgelCFxkg98FrSlYnk',authDomain:'hyunggi-brawl.firebaseapp.com',projectId:'hyunggi-brawl',
+ storageBucket:'hyunggi-brawl.firebasestorage.app',messagingSenderId:'769771768861',appId:'1:769771768861:web:bbba868f23c2d413ba8af4'};
+const ID_DOMAIN='@hyunggi-brawl.game'; // 아이디 로그인: 아이디를 이 가짜 이메일로 바꿔 Firebase에 넘긴다 (메일은 보내지 않음)
 const FB={on:false,user:null};const FB_V='10.12.2';
 function loadScript(src){return new Promise((res,rej)=>{const sc=document.createElement('script');sc.src=src;sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});}
-async function fbInit(){if(!FB_CONFIG||window.claude)return;try{const b='https://www.gstatic.com/firebasejs/'+FB_V+'/';await loadScript(b+'firebase-app-compat.js');await loadScript(b+'firebase-auth-compat.js');await loadScript(b+'firebase-firestore-compat.js');
+async function fbInit(){if(!FB_CONFIG||window.claude)return;try{const b='https://www.gstatic.com/firebasejs/'+FB_V+'/';if(!window.firebase){await loadScript(b+'firebase-app-compat.js');await loadScript(b+'firebase-auth-compat.js');await loadScript(b+'firebase-firestore-compat.js');}
   firebase.initializeApp(FB_CONFIG);FB.on=true;firebase.auth().getRedirectResult().catch(()=>{});
   firebase.auth().onAuthStateChanged(u=>{FB.user=u||null;if(u)fbLoad();renderAuth();});renderAuth();}catch(e){FB.on=false;}}
 function fbLogin(){const p=new firebase.auth.GoogleAuthProvider();firebase.auth().signInWithPopup(p).catch(e=>{if(e&&(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment'))firebase.auth().signInWithRedirect(p);});}
 function fbLogout(){firebase.auth().signOut();}
+const AUTH_ERR={'auth/invalid-credential':'아이디 또는 비밀번호가 틀렸어요','auth/wrong-password':'아이디 또는 비밀번호가 틀렸어요','auth/user-not-found':'없는 아이디예요. 가입을 눌러 주세요',
+ 'auth/invalid-login-credentials':'아이디 또는 비밀번호가 틀렸어요','auth/email-already-in-use':'이미 있는 아이디예요','auth/weak-password':'비밀번호는 6자 이상이어야 해요',
+ 'auth/operation-not-allowed':'아이디 로그인이 아직 꺼져 있어요 (Firebase에서 이메일/비밀번호를 켜 주세요)','auth/too-many-requests':'시도가 너무 많아요. 잠시 후 다시 해 주세요','auth/network-request-failed':'인터넷 연결을 확인해 주세요'};
+let authForm=false,authMsg='';
+// 아이디·비밀번호 로그인/가입
+async function idAuth(signup){const id=($('authId').value||'').trim().toLowerCase(),pw=$('authPw').value||'';
+ if(!/^[a-z0-9_]{3,16}$/.test(id)){authMsg='아이디는 영어 소문자·숫자·_ 3~16자예요';renderAuth();return;}if(pw.length<6){authMsg='비밀번호는 6자 이상이어야 해요';renderAuth();return;}
+ authMsg=signup?'가입하는 중...':'로그인하는 중...';renderAuth(true);
+ try{const a=firebase.auth();if(signup)await a.createUserWithEmailAndPassword(id+ID_DOMAIN,pw);else await a.signInWithEmailAndPassword(id+ID_DOMAIN,pw);authForm=false;authMsg='';}
+ catch(e){authMsg=AUTH_ERR[e&&e.code]||('실패했어요 ('+(e&&e.code||'오류')+')');}renderAuth();}
+const authName=u=>u.email&&u.email.endsWith(ID_DOMAIN)?u.email.slice(0,-ID_DOMAIN.length):(u.displayName||u.email||'로그인됨');
 const fbRef=()=>firebase.firestore().collection('users').doc(FB.user.uid);
 // 로그인하면 서버 전적과 이 기기 전적 중 큰 값을 쓴다
 async function fbLoad(){try{const d=await fbRef().get();if(d.exists){const r=d.data().rec||{};for(const k of['on','bot'])for(const j of['w','l'])REC[k][j]=Math.max(REC[k][j]|0,(r[k]&&+r[k][j])|0);}saveRec();renderRec();}catch(e){}}
 function fbSave(){fbRef().set({rec:REC,name:LOOK.name,updated:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(()=>{});}
-function renderAuth(){const b=$('authBox');if(!b)return;if(!FB.on){b.style.display='none';return;}b.style.display='flex';b.innerHTML='';
- if(FB.user){const s=document.createElement('span');s.textContent='👤 '+(FB.user.displayName||FB.user.email||'로그인됨')+' · 전적 저장 중';const o=document.createElement('button');o.className='btn sm gray';o.textContent='로그아웃';o.onclick=fbLogout;b.append(s,o);}
- else{const i=document.createElement('button');i.className='btn sm gray';i.textContent='🔑 Google로 로그인 (전적을 어디서나)';i.onclick=fbLogin;b.append(i);}}
+function renderAuth(keepInputs){const b=$('authBox');if(!b)return;if(!FB.on){b.style.display='none';return;}b.style.display='flex';
+ const mk=(t,c,f)=>{const x=document.createElement('button');x.className='btn sm '+(c||'gray');x.textContent=t;x.onclick=f;return x;};
+ // 입력 칸이 이미 떠 있으면 문구만 바꾼다 (입력한 아이디·비밀번호 유지)
+ if(!FB.user&&authForm&&$('authMsg')){$('authMsg').textContent=authMsg;return;}
+ const keepId=$('authId')?$('authId').value:'';b.innerHTML='';
+ if(FB.user){const s=document.createElement('span');s.textContent='👤 '+authName(FB.user)+' · 전적이 계정에 저장돼요';b.append(s,mk('로그아웃','gray',fbLogout));return;}
+ if(!authForm){b.append(mk('🔑 Google로 로그인','gray',fbLogin),mk('🪪 아이디로 로그인','gray',()=>{authForm=true;authMsg='';renderAuth();}));return;}
+ const box=document.createElement('div');box.className='authForm';
+ box.innerHTML='<input id="authId" maxlength="16" placeholder="아이디" autocomplete="username"><input id="authPw" type="password" maxlength="64" placeholder="비밀번호 (6자 이상)" autocomplete="current-password"><div id="authMsg"></div>';
+ b.append(box);$('authId').value=keepId;const row=document.createElement('div');row.style.cssText='display:flex;gap:6px;justify-content:center;flex-wrap:wrap';
+ row.append(mk('로그인','',()=>idAuth(false)),mk('가입','gray',()=>idAuth(true)),mk('닫기','gray',()=>{authForm=false;authMsg='';renderAuth();}));b.append(row);$('authMsg').textContent=authMsg;
+ $('authId').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')$('authPw').focus();});
+ $('authPw').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')idAuth(false);});}
 fbInit();
 function renderRec(){$('recLine').textContent='📊 온라인 '+recTxt(REC.on)+' · 봇 '+recTxt(REC.bot);}
 const saveLook=()=>{try{localStorage.setItem('brawlLook',JSON.stringify(LOOK));}catch(e){}};
@@ -1004,7 +1031,7 @@ function playerInput(f){const i=f.inp;let mx=0,my=0;
  else if(o.state==='alive')i.aim=Math.atan2(o.y-f.y,o.x-f.x);else if(mx||my)i.aim=Math.atan2(my,mx);
  i.atk=pAtk;i.guard=!!(keys.KeyQ||mGuard||tGuard);}
 const inGame=()=>state==='play'||state==='count'||state==='end';
-addEventListener('keydown',e=>{audio();if(document.activeElement===$('nmIn')||document.activeElement===$('codeIn'))return;keys[e.code]=true;
+addEventListener('keydown',e=>{audio();if((e.target&&e.target.tagName==='INPUT')||(document.activeElement&&document.activeElement.tagName==='INPUT'))return;keys[e.code]=true;
  if(state==='play'){if(e.code==='Space'||e.code==='ShiftLeft'||e.code==='ShiftRight'||e.code==='KeyK')F[0].inp.dash=true;if(e.code==='KeyJ'&&!e.repeat)pAtk=true;if(e.code==='KeyE'||e.code==='KeyL')F[0].inp.ult=true;if(e.code==='KeyF'&&!e.repeat)F[0].inp.grab=true;}
  if(e.code==='Escape'||e.code==='KeyP'){if(NET.on&&inGame()){if($('pause').classList.contains('show'))setPause(false);else setPause(true);}else if(state==='play')setPause(true);else if(state==='pause')setPause(false);else if(state==='look')closeLook();}
  if(e.code==='KeyM')muted=!muted;
