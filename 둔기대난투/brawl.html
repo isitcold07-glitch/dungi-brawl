@@ -651,7 +651,7 @@ function mkF(id,wp,look,bot){const D=WD[wp];return{id,wp,bot,name:look.name||'�
  x:0,y:0,z:0,vz:0,kx:0,ky:0,r:14,pct:0,stocks:3,state:'alive',face:0,mvx:1,mvy:0,walk:0,
  reach:D.reach,arc:D.arc,spd:D.spd,sw:null,swCd:0,swDir:1,queued:false,charging:false,chargeT:0,chargeSnd:0,atkHeld:false,
  slamPend:null,slamCd:0,slamAnim:0,slamA:0,spinA:null,stun:0,lag:0,inv:0,rinv:0,dashT:0,dashN:D.dash,dashMax:D.dash,dashCd:0,dashCdMax:1.4,dvx:0,dvy:0,dashAt:-9,trailT:0,
- jgT:0,guardCd:0,ledgeT:-9,guarding:false,gStart:-9,sh:100,grabT:0,grabA:0,grabVis:0,giantT:0,jdBuff:0,jdCd:0,twinN:0,cN:0,cLast:-9,sq:0,flash:0,trail:[],flatT:0,fallT:0,respT:0,koed:0,
+ jgT:0,guardCd:0,ledgeT:-9,guarding:false,gStart:-9,sh:100,grabT:0,grabCd:0,grabA:0,grabVis:0,giantT:0,jdBuff:0,jdCd:0,twinN:0,cN:0,cLast:-9,sq:0,flash:0,trail:[],flatT:0,fallT:0,respT:0,koed:0,
  ult:0,U:null,pilOut:false,inp:{mx:0,my:0,aim:0,atk:false,dash:false,ult:false,guard:false,grab:false},ai:{t:0,str:0,hold:0,tap:false},st:{dealt:0,ko:0,jd:0,guard:0,parry:0}};}
 const other=f=>F[1-f.id];
 const canAct=f=>f.state==='alive'&&f.stun<=0&&f.lag<=0&&!f.slamPend&&!f.spinA&&!f.U&&!f.dig&&!f.guarding&&f.grabT<=0;
@@ -723,14 +723,15 @@ function blockHit(def,att,o){const tw=Math.atan2(att.y-def.y,att.x-def.x),pan=de
  addText(def.x,def.y,def.r*2+30,'막음!','#a5d8ff',18,.5);sfx('block');fx.push({t:'ring',x:def.x,y:def.y,r:34,life:.18,ml:.18,c:'#a5d8ff',w:5});
  if(def.sh<=0)guardBreak(def);}
 const GRAB_R=50,GRAB_LUNGE=360; // 잡기 사거리(몸 끝에서), 달려드는 속도
-function startGrab(f){const o=other(f);f.guarding=false;f.charging=false;f.chargeT=0;f.sw=null;f.queued=false;f.grabT=.13;
+function startGrab(f){if(f.grabCd>0)return;const o=other(f);f.grabCd=.9;f.guarding=false;f.charging=false;f.chargeT=0;f.sw=null;f.queued=false;f.grabT=.13;
  // 조준이 상대 쪽(약 57° 안)이면 상대를 향해 잡는다
  let A=f.inp.aim;if(o.state==='alive'){const to=Math.atan2(o.y-f.y,o.x-f.x);if(Math.abs(angDiff(to,A))<1)A=to;}f.grabA=A;f.face=A;sfx('whoosh');}
 function doGrab(f){const o=other(f),A=f.grabA,dx=o.x-f.x,dy=o.y-f.y,d=Math.hypot(dx,dy);f.grabVis=.22;
  let res='none';if(o.state==='alive'&&o.z<45&&d<f.r+o.r+GRAB_R&&(d<f.r+o.r+10||Math.abs(angDiff(Math.atan2(dy,dx),A))<1.5)){
-  res=hitF(f,o,{pct:8,kb:560,ux:Math.cos(A),uy:Math.sin(A),charge:true,grab:true,lift:.9,stun:.25});
-  if(res==='hit'){addText(o.x,o.y,o.r*2+40,'잡았다! 던지기!','#ffd8a8',24,.9);impact(o.x,o.y,o.z+o.r,Math.atan2(Math.sin(A)*T,Math.cos(A)),true);sfx('heavy');shake=Math.max(shake,12);freeze=Math.max(freeze,.08);f.sq=1;}}
- if(res!=='hit'){f.lag=.4;addText(f.x+Math.cos(A)*30,f.y+Math.sin(A)*30,40,'헛잡기','#ced4da',16,.6);}}
+  const gd=o.guarding;if(gd)o.sh=Math.max(5,o.sh-30); // 잡기는 가드한 상대에게 강하다
+  res=hitF(f,o,gd?{pct:9,kb:600,ux:Math.cos(A),uy:Math.sin(A),charge:true,grab:true,lift:.9,stun:.25}:{pct:5,kb:380,ux:Math.cos(A),uy:Math.sin(A),charge:true,grab:true,lift:.6,stun:.2});
+  if(res==='hit'){addText(o.x,o.y,o.r*2+40,gd?'가드 잡기! 던지기!':'잡았다!','#ffd8a8',gd?26:20,.9);impact(o.x,o.y,o.z+o.r,Math.atan2(Math.sin(A)*T,Math.cos(A)),true);sfx('heavy');shake=Math.max(shake,12);freeze=Math.max(freeze,.08);f.sq=1;}}
+ if(res!=='hit'){f.lag=.5;addText(f.x+Math.cos(A)*30,f.y+Math.sin(A)*30,40,'헛잡기','#ced4da',16,.6);}}
 function hurt(f,o){if(f.remote)netSendHit(o);else if(f.state==='alive'&&!f.U&&!f.dig&&f.rinv<=0)applyHit(f,o);}
 function recoil(f,kx,ky,lag){if(f.remote)netSendHit({k:'r',kx,ky,lag});else{f.kx=kx;f.ky=ky;f.lag=Math.max(f.lag,lag);}}
 function hitF(att,def,o){if(NET.replay)return NET.replayRes;if(att.giantT>0&&!o.k){o.kb*=1.3;o.pct=Math.round(o.pct*1.2);}if(def.state!=='alive'||def.rinv>0||def.U||def.dig)return 'none';
@@ -949,7 +950,7 @@ function updF(f,dt){const live=state==='play';
  let mx=0,my=0;if(live){mx=f.inp.mx;my=f.inp.my;}
  if(mx||my){f.mvx=mx;f.mvy=my;}
  // 공격 버튼 (누름 → 차지 시작, 뗌 → 휘두르기 / 차지 공격)
- f.giantT-=dt;f.grabVis-=dt;
+ f.giantT-=dt;f.grabVis-=dt;f.grabCd-=dt;
  // 가드 (누르고 있는 동안). 게이지가 다 닳으면 가드 브레이크
  const wantG=live&&f.inp.guard&&f.stun<=0&&f.lag<=0&&!f.slamPend&&!f.spinA&&!f.sw&&!f.charging&&f.dashT<=0&&f.grabT<=0;
  if(wantG&&!f.guarding){f.guarding=true;f.gStart=time-(f.bot?rand(.06,.3):0);/* 봇은 패링을 덜 하게 */}else if(!wantG&&f.guarding)f.guarding=false;
@@ -997,6 +998,10 @@ function botAI(b,t,dt){const A=b.ai,Q=BOTD[CFG.lv],inp=b.inp;inp.mx=inp.my=0;A.g
  else{if(d>rng*.85){mx=dx/d;my=dy/d;}else if(d<rng*.45){mx=-dx/d*.6;my=-dy/d*.6;}
   mx+=-dy/d*A.str*.55;my+=dx/d*A.str*.55;}
  if(bd>AR*.6){const w=(bd-AR*.6)/(AR*.4)*1.8;mx-=b.x/bd*w;my-=b.y/bd*w;}
+ // 상대가 잡으러 달려들면: 가드는 풀고, 가까우면 때려서 끊고 아니면 대시로 피한다 (잡기 한 번에 한 번만 판단)
+ if(t.grabT>0&&d<b.r+t.r+GRAB_R+70){if(!A.grDone){A.grDone=1;const pr={easy:.1,normal:.4,hard:.75}[CFG.lv]||.4;
+   if(Math.random()<pr){A.gT=0;inp.guard=false;if(b.dashN>0&&b.dashT<=0){const s=Math.random()<.5?1:-1;inp.mx=-dx/d*.6-dy/d*s;inp.my=-dy/d*.6+dx/d*s;inp.dash=true;}else if(canAct(b)){inp.atk=true;A.tap=true;}return;}}}
+ else A.grDone=0;
  if(A.gT>0){inp.atk=false;A.tap=false;A.hold=0;return;} // 가드 중엔 공격하지 않는다 (가드+공격 = 잡기)
  // 상자가 가까우면 주우러 간다
  if(tAlive&&d>rng*1.2){const it=items.find(i=>i.t>=.6&&Math.hypot(i.x-b.x,i.y-b.y)<260);if(it){const ix=it.x-b.x,iy=it.y-b.y,il=Math.hypot(ix,iy)||1;mx=ix/il;my=iy/il;}}
