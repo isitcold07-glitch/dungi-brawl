@@ -1291,6 +1291,7 @@ function drawHUD(){const cw=Math.min(240,(W-36)/2),ch=74,y=H-ch-12;ctx.textBasel
    if(o.n!=null){ctx.font='bold 12px system-ui';ctx.fillStyle=o.c;ctx.fillText('×'+o.n,cx+r-2,cy-r+4);}
    ctx.font='bold 10px system-ui';ctx.fillStyle='rgba(255,255,255,.6)';ctx.fillText(o.lb,cx,cy+r+9);});}
  // 카운트다운
+ if(state==='count'){ctx.textAlign='center';ctx.font='800 '+Math.min(18,W/22)+'px system-ui';ctx.lineWidth=4;ctx.strokeStyle='#000';const it=MATCH.items?'📦 아이템 켬':'아이템 끔';ctx.strokeText(it,W/2,H*.22+(MATCH.bo>1?40:0));ctx.fillStyle=MATCH.items?'#ffe066':'#ced4da';ctx.fillText(it,W/2,H*.22+(MATCH.bo>1?40:0));}
  if(state==='count'&&MATCH.bo>1){const last=MATCH.w[0]===MATCH.need-1&&MATCH.w[1]===MATCH.need-1;ctx.textAlign='center';ctx.font='900 '+Math.min(40,W/12)+'px system-ui';ctx.lineWidth=6;ctx.strokeStyle='#3a0008';const t=last?'마지막 라운드!':MATCH.round+'라운드';ctx.strokeText(t,W/2,H*.22);ctx.fillStyle=last?'#ff6b6b':'#fff';ctx.fillText(t,W/2,H*.22);}
  if(state==='count'){const n=Math.ceil(countT),k=n-countT;ctx.save();ctx.translate(W/2,H*.4);ctx.scale(1+k*.6,1+k*.6);ctx.globalAlpha=1-k*.7;ctx.textAlign='center';ctx.font='900 110px system-ui';ctx.lineWidth=10;ctx.strokeStyle='#3a0008';ctx.strokeText(n,0,0);ctx.fillStyle='#ffd43b';ctx.fillText(n,0,0);ctx.restore();ctx.globalAlpha=1;}
  if(banner&&banner.life>0){ctx.globalAlpha=Math.min(1,banner.life*1.5);const s=1+Math.max(0,banner.life-1.1)*.6;ctx.save();ctx.translate(W/2,H*.26);ctx.scale(s,s);ctx.textAlign='center';
@@ -1430,7 +1431,7 @@ function netRecv(opp){const g=opp.presence;if(!NET.on||g.gen!==NET.gen||g.rd!==M
   if(state==='play'||state==='count')for(const h of(Array.isArray(g.hits)?g.hits:[]).slice().sort((a,b)=>a.n-b.n)){if(!(+h.n>NET.seen))continue;NET.seen=+h.n;if(h.g===NET.gen&&h.rd===MATCH.round&&state==='play')netRecvHit(h);}}}
 function startOnline(opp){const g=opp.presence;NET.on=true;NET.msg='';NET.side=myPeer()<opp.peer?0:1;NET.oppGoneT=0;NET.lastP=null;NET.tgt=null;
  const ol=lookOf(g);if(ol.col===LOOK.col)ol.col=COLS.find(c=>c!==LOOK.col&&c!=='#868e96'); // 같은 색이면 내 화면에서만 바꿔 구분
- MATCH={items:NET.side===0?CFG.items:!!g.it,bo:3,w:[0,0],round:1,need:2,over:false,st:[newSt(),newSt()],looks:[LOOK,ol],wps:[CFG.wp,wpOf(g)],bots:[false,false]};
+ MATCH={items:!!CFG.items&&!!g.it,/* 아이템은 둘 다 켰을 때만 */bo:3,w:[0,0],round:1,need:2,over:false,st:[newSt(),newSt()],looks:[LOOK,ol],wps:[CFG.wp,wpOf(g)],bots:[false,false]};
  matchT=0;audio();startRound();}
 // 방 코드별 공간: 이름 붙은 방(join)은 같은 계정의 두 창이 서로 안 보이는 경우가 있어,
 // 게임을 연 모두가 있는 기본 방(lobby)에서 presence의 rm(방 코드)이 같은 사람끼리만 짝짓는다
@@ -1471,7 +1472,7 @@ function netDebug(){if(!NET.sub||state!=='online')return;const ps=NET.sub.peers(
  if($('netDbg').textContent!==txt)$('netDbg').textContent=txt;}
 function renderOnlineLive(opp){if(!NET.sub)return;netDebug();const key=(opp?opp.peer+opp.presence.nm+opp.presence.wp+opp.presence.rdy:'-')+NET.rdy+NET.gen+state+NET.msg;if(key===lastLive)return;lastLive=key;
  const waiting=NET.rdy===NET.gen+1;
- if(state==='online'){$('oppInfo').innerHTML=opp?'상대: <b>'+esc(lookOf(opp.presence).name)+'</b>'+(Array.isArray(opp.presence.rc)?' ('+recTxt({w:+opp.presence.rc[0]||0,l:+opp.presence.rc[1]||0})+')':'')+' '+WD[wpOf(opp.presence)].ic+' '+WD[wpOf(opp.presence)].nm+(opp.presence.rdy===NET.gen+1?' · <b style="color:#69db7c">준비 완료</b>':(NET.quick?' · 곧 시작!':' · 준비 중...')):(NET.quick?'⚡ 상대를 찾는 중... 다른 사람이 빠른 대전을 누르면 바로 시작해요':'상대를 기다리는 중... 친구에게 방 코드를 알려 주세요');
+ if(state==='online'){$('oppInfo').innerHTML=opp?'상대: <b>'+esc(lookOf(opp.presence).name)+'</b>'+(Array.isArray(opp.presence.rc)?' ('+recTxt({w:+opp.presence.rc[0]||0,l:+opp.presence.rc[1]||0})+')':'')+' '+WD[wpOf(opp.presence)].ic+' '+WD[wpOf(opp.presence)].nm+'<br><span style="font-size:13px;opacity:.85">📦 아이템: '+(CFG.items&&opp.presence.it?'둘 다 켬 → 나와요':'한 명이라도 끄면 안 나와요 (나 '+(CFG.items?'켬':'끔')+' · 상대 '+(opp.presence.it?'켬':'끔')+')')+'</span><br>'+(opp.presence.rdy===NET.gen+1?' · <b style="color:#69db7c">준비 완료</b>':(NET.quick?' · 곧 시작!':' · 준비 중...')):(NET.quick?'⚡ 상대를 찾는 중... 다른 사람이 빠른 대전을 누르면 바로 시작해요':'상대를 기다리는 중... 친구에게 방 코드를 알려 주세요');
   $('readyBtn').textContent=!opp&&!waiting?'상대 기다리는 중':waiting?'준비 취소':'준비!';$('readyBtn').disabled=!opp&&!waiting;$('readyBtn').style.opacity=!opp&&!waiting?.5:1;if(NET.msg)$('onMsg').textContent=NET.msg;}
  if(state==='over'){$('retryBtn').textContent=!NET.sub||!opp?'상대 없음':waiting?'상대 기다리는 중...':opp.presence.rdy===NET.gen+1?'재대결 수락!':'재대결';$('ovNet').textContent=!opp?'상대가 방을 나갔어요':opp.presence.rdy===NET.gen+1&&!waiting?'상대가 재대결을 원해요!':'';}}
 // 안 보이는 탭에서는 화면 갱신(requestAnimationFrame)이 멈추므로, 그동안에도 방 신호는 타이머로 보낸다
